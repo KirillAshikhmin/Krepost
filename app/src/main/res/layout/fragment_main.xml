@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_height="match_parent"
+    android:layout_width="match_parent">
+
+    <LinearLayout
+        android:id="@+id/main"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="16dp"
+        tools:context=".ui.main.MainFragment">
+
+        <Button
+            android:id="@+id/loading_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Fetch data" />
+
+        <Button
+            android:id="@+id/loading_error_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Fetch with error" />
+
+        <Button
+            android:id="@+id/invoke_action_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Invoke action (without cache)" />
+
+        <Button
+            android:id="@+id/no_flow_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Fetch without flow" />
+
+        <TextView
+            android:id="@+id/result_title_text_view"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Result:"
+            android:textAlignment="center"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/status_text_view"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="TextView"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/result_text_view"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="TextView" />
+    </LinearLayout>
+</ScrollView>
