@@ -21,8 +21,8 @@ class FetchDataDSL<Dto, Model, ErrorDto, ErrorModel : IKrepostError> {
         action = block
     }
 
-    fun cache(cacheDsl: FetchDataCacheDSL.() -> Unit) {
-        val cache = FetchDataCacheDSL()
+    fun cache(name: String, cacheDsl: FetchDataCacheDSL.() -> Unit) {
+        val cache = FetchDataCacheDSL(name)
         cache.cacheDsl()
         this.cache = cache
     }
@@ -32,11 +32,12 @@ class FetchDataDSL<Dto, Model, ErrorDto, ErrorModel : IKrepostError> {
     }
 }
 
-class FetchDataCacheDSL {
-    var name: String? = null
-    var strategy: CacheStrategy? = null
+class FetchDataCacheDSL(val name: String) {
+    var strategy: CacheStrategy = CacheStrategy.FromCacheIfExist
+    var cacheTimeMilliseconds: Long? = null
+    var deleteIfOutdated: Boolean? = false
 
-    private var arguments: List<String>? = null
+    var arguments: List<String>? = null
 
     fun arguments(vararg arguments: Any?) {
         this.arguments = arguments.mapNotNull { it?.toString() }
@@ -45,11 +46,16 @@ class FetchDataCacheDSL {
 
 enum class CacheStrategy {
     /** If the data already exists in the cache, return it */
-    IfExist,
+    FromCacheIfExist,
 
     /** If unable to load data, return it from cache if it exists; otherwise, return null */
-    IfNotAvailable,
+    FromCacheIfNotAvailable,
 
     /** If the data is existed in the cache, return it, then load data and return */
-    CachedThenLoad
+    CachedThenLoad;
+
+    companion object {
+        val CacheStrategy.needGetCachedResultBeforeLoad
+            get() = this == FromCacheIfExist || this == CachedThenLoad
+    }
 }

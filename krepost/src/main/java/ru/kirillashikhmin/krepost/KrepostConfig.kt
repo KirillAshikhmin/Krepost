@@ -3,16 +3,16 @@ package ru.kirillashikhmin.krepost
 data class KrepostConfig(
     /**
      * Количество повторов выполнения запроса, если он завершился с ошибкой.
-     * Повторяет запрос, только если его статус не в списке [NoRetryStatuses].
+     * Повторяет запрос, только если его статус не в списке [noRetryStatuses].
      */
-    val RetryCount: Int = defaultRetryCount,
+    var retryCount: Int = defaultRetryCount,
     /**
      * Задержка между повторами запросов.
      */
-    val RetryDelayMilliseconds: Long = defaultRetryDelayMilliseconds,
-    val CacheTimeMilliseconds: Long = defaultCacheTime,
-    val DeleteCacheIfOutdated: Boolean = defaultDeleteCacheIfOutdated,
-    val NoRetryStatuses: List<RequestStatus> = defaultNoRetryStatuses,
+    var retryDelayMilliseconds: Long = defaultRetryDelayMilliseconds,
+    var cacheTimeMilliseconds: Long = defaultCacheTime,
+    var deleteCacheIfOutdated: Boolean = defaultDeleteCacheIfOutdated,
+    var noRetryStatuses: List<RequestStatus> = defaultNoRetryStatuses,
 ) {
     companion object {
         const val defaultCacheTime = 7 * 24 * 60 * 60 * 1000L // 7 days

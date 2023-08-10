@@ -16,15 +16,15 @@ class Repository {
         RepositoryCore.createService("https://dummyjson.com/", DummyJsonService::class.java)
 
     suspend fun getProducts(): RequestResult<ProductsDto> {
-        return  try {
+        return try {
             val result = service.getProducts()
             RequestResult.Success.Value(result)
-        } catch (t : Throwable) {
+        } catch (t: Throwable) {
             RequestResult.Failure.Error(RequestStatus.Unprocessable, "Error", t)
         }
     }
 
-    val krepost = Krepost.initialize {  }
+    val krepost = Krepost()
 
     class MyKrepostError : IKrepostError {
         override val errorMessage: String
@@ -32,12 +32,11 @@ class Repository {
     }
 
     suspend fun fetchData1(): RequestResult<Int> =
-        krepost.fetchDataMappedErrorMapped<String, Int, MyKrepostError, MyKrepostError> {
+        krepost.fetchDataMapped<String, Int> {
             action { getData() }
-            cache {
-                name = "aaa"
-                strategy = CacheStrategy.IfExist
-                arguments(1)
+            cache("fetchString") {
+                strategy = CacheStrategy.FromCacheIfExist
+                arguments("string", 1)
             }
             mapper { data -> data.toInt() }
         }
@@ -45,9 +44,8 @@ class Repository {
     suspend fun fetchData2(): RequestResult<Int> {
         val result2 = krepost.fetchDataMapped<String, Int> {
             action { getData2() }
-            cache {
-                name = "bbb"
-                strategy = CacheStrategy.IfNotAvailable
+            cache("bbb") {
+                strategy = CacheStrategy.FromCacheIfNotAvailable
                 arguments(2)
             }
             mapper { data -> data.toInt() }
@@ -58,9 +56,8 @@ class Repository {
     suspend fun fetchData3(): RequestResult<String> {
         val result3 = krepost.fetchData<String> {
             action { getData3() }
-            cache {
-                name = "ccc"
-                strategy = CacheStrategy.IfNotAvailable
+            cache("ccc") {
+                strategy = CacheStrategy.FromCacheIfNotAvailable
                 arguments(3)
             }
         }
@@ -68,17 +65,17 @@ class Repository {
         return result3
     }
 
-    suspend fun getData() : String {
+    suspend fun getData(): String {
         delay(100)
         return "1"
     }
 
-    suspend fun getData2() : String {
+    suspend fun getData2(): String {
         delay(100)
         return "2"
     }
 
-    suspend fun getData3() : String {
+    suspend fun getData3(): String {
         delay(100)
         return "3"
     }

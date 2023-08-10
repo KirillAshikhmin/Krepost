@@ -2,7 +2,7 @@ package ru.kirillashikhmin.krepost.cache
 
 import ru.kirillashikhmin.krepost.interfaces.IKrepostCache
 
-class LruCache : IKrepostCache {
+class InMemoryCache : IKrepostCache {
 
     private val cache = mutableMapOf<String, Any>()
 
