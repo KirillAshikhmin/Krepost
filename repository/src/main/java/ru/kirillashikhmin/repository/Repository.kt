@@ -7,6 +7,8 @@ import ru.kirillashikhmin.krepost.IKrepostError
 import ru.kirillashikhmin.krepost.Krepost
 import ru.kirillashikhmin.krepost.RequestResult
 import ru.kirillashikhmin.krepost.RequestStatus
+import ru.kirillashikhmin.krepost.errorMappers.KotlinXSerializationErrorMapper
+import ru.kirillashikhmin.krepost.errorMappers.RetrofitErrorMapper
 import ru.kirillashikhmin.repository.dto.ProductsDto
 
 @ExperimentalSerializationApi
@@ -24,7 +26,12 @@ class Repository {
         }
     }
 
-    val krepost = Krepost()
+    val krepost = Krepost{
+        errorMappers = listOf(
+            KotlinXSerializationErrorMapper,
+            RetrofitErrorMapper
+        )
+    }
 
     class MyKrepostError : IKrepostError {
         override val errorMessage: String
@@ -35,7 +42,7 @@ class Repository {
         krepost.fetchDataMapped<String, Int> {
             action { getData() }
             cache("fetchString") {
-                strategy = CacheStrategy.FromCacheIfExist
+                strategy = CacheStrategy.IfExist
                 arguments("string", 1)
             }
             mapper { data -> data.toInt() }
@@ -45,7 +52,7 @@ class Repository {
         val result2 = krepost.fetchDataMapped<String, Int> {
             action { getData2() }
             cache("bbb") {
-                strategy = CacheStrategy.FromCacheIfNotAvailable
+                strategy = CacheStrategy.IfNotAvailable
                 arguments(2)
             }
             mapper { data -> data.toInt() }
@@ -57,7 +64,7 @@ class Repository {
         val result3 = krepost.fetchData<String> {
             action { getData3() }
             cache("ccc") {
-                strategy = CacheStrategy.FromCacheIfNotAvailable
+                strategy = CacheStrategy.IfNotAvailable
                 arguments(3)
             }
         }

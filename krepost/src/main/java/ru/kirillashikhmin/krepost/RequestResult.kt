@@ -1,3 +1,5 @@
+@file:Suppress("unused")
+
 package ru.kirillashikhmin.krepost
 
 import kotlin.contracts.ExperimentalContracts

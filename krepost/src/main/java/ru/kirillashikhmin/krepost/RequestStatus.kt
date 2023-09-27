@@ -4,6 +4,8 @@ package  ru.kirillashikhmin.krepost
 @Suppress("unused")
 open class RequestStatus(val code: Int) {
     object Unknown : RequestStatus(0)
+
+    //Http codes
     object Ok : RequestStatus(200)
     object NotModified : RequestStatus(304)
     object BadRequest : RequestStatus(400)
@@ -12,16 +14,20 @@ open class RequestStatus(val code: Int) {
     object NotFound : RequestStatus(404)
     object NotAcceptable : RequestStatus(406)
     object RequestEntityTooLarge : RequestStatus(413)
+    object IAmATeapot : RequestStatus(418)
     object Unprocessable : RequestStatus(422)
     object InternalServerError : RequestStatus(500)
     object NotImplemented : RequestStatus(501)
     object ServiceUnavailable : RequestStatus(503)
 
+
     // Krepost codes
+    object KrepostInternalError : RequestStatus(1000)
     object Canceled : RequestStatus(1001)
     object InvalidRequest : RequestStatus(1002)
     object SerializationError : RequestStatus(1003)
     object CacheError : RequestStatus(1004)
+    object UnknownHttpError : RequestStatus(1004)
     object NoInternet : RequestStatus(1100)
 
 

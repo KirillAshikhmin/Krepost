@@ -1,5 +1,6 @@
 package ru.kirillashikhmin.krepost
 
+import ru.kirillashikhmin.krepost.errorMappers.ErrorMapper
 import ru.kirillashikhmin.krepost.interfaces.IKrepostCache
 import ru.kirillashikhmin.krepost.internal.FetchType
 import ru.kirillashikhmin.krepost.internal.KrepostInvocation
@@ -10,11 +11,7 @@ class KrepostDSL {
 
     var cacher: IKrepostCache? = null
 
-    private var arguments: List<String>? = null
-
-    fun arguments(vararg arguments: Any?) {
-        this.arguments = arguments.mapNotNull { it?.toString() }
-    }
+    var errorMappers: List<ErrorMapper>? = null
 }
 
 
@@ -22,6 +19,7 @@ class Krepost(blockDsl: KrepostDSL.() -> Unit = {}) {
 
     var config: KrepostConfig
     var cacheManager: IKrepostCache? = null
+    var errorMappers: List<ErrorMapper>? = null
 
     init {
         val dsl = KrepostDSL().apply(blockDsl)

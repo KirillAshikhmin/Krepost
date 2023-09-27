@@ -15,7 +15,9 @@ mapper { data -> data.filter { it.isActive } }
 class FetchDataDSL<Dto, Model, ErrorDto, ErrorModel : IKrepostError> {
     lateinit var action: suspend () -> Dto
     var cache: FetchDataCacheDSL? = null
-    var mapper: ((Dto) -> Model)? = null
+    var mapper: ((Dto?) -> Model)? = null
+
+    var config : KrepostConfig? = null
 
     fun action(block: suspend () -> Dto) {
         action = block
@@ -27,13 +29,13 @@ class FetchDataDSL<Dto, Model, ErrorDto, ErrorModel : IKrepostError> {
         this.cache = cache
     }
 
-    fun mapper(block: (Dto) -> Model) {
+    fun mapper(block: (Dto?) -> Model) {
         mapper = block
     }
 }
 
 class FetchDataCacheDSL(val name: String) {
-    var strategy: CacheStrategy = CacheStrategy.FromCacheIfExist
+    var strategy: CacheStrategy = CacheStrategy.IfExist
     var cacheTimeMilliseconds: Long? = null
     var deleteIfOutdated: Boolean? = false
 
@@ -44,18 +46,3 @@ class FetchDataCacheDSL(val name: String) {
     }
 }
 
-enum class CacheStrategy {
-    /** If the data already exists in the cache, return it */
-    FromCacheIfExist,
-
-    /** If unable to load data, return it from cache if it exists; otherwise, return null */
-    FromCacheIfNotAvailable,
-
-    /** If the data is existed in the cache, return it, then load data and return */
-    CachedThenLoad;
-
-    companion object {
-        val CacheStrategy.needGetCachedResultBeforeLoad
-            get() = this == FromCacheIfExist || this == CachedThenLoad
-    }
-}
