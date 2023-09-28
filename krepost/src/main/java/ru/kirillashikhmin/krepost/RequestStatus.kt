@@ -27,7 +27,7 @@ open class RequestStatus(val code: Int) {
     object InvalidRequest : RequestStatus(1002)
     object SerializationError : RequestStatus(1003)
     object CacheError : RequestStatus(1004)
-    object UnknownHttpError : RequestStatus(1004)
+    object UnknownRequestError : RequestStatus(1005)
     object NoInternet : RequestStatus(1100)
 
 

@@ -20,7 +20,7 @@ val krepost = Krepost.initialize()
 
 suspend fun fetchData1(): RequestResult<Int> =
         krepost.fetchDataMapped<String, Int> {
-            action { getData() }
+            action { getRemoteDataSuspend() }
             cache {
                 name = "fetchString"
                 strategy = CacheStrategy.IfExist
@@ -42,14 +42,14 @@ suspend fun fetchData1(): RequestResult<Int> =
 - Кеширование
   - Разные стратегии использования кэша
     - IfExist - Если результат есть в эше - возвращать его, иначе выполнять запрос и кэшировать
-    - IfNotAvailable - Выполнять запрос, если не удалось - возаращать результат из кэша
+    - IfNotAvailable - Выполнять запрос, если не удалось - возвращать результат из кэша
 	- CachedThenLoad - Возвращать запрос из кэша, затем выполнять запрос и возвращать данные из него (только при использовании Flow)
   - Кэширование смапленных моделей
-  - Любые способы храниения кэша
+  - Любые способы хранения кэша
   
 ## RequestResult
 
-Расширенная альтарнативная версия класса Result.
+Расширенная альтернативная версия класса Result.
 Позволяет обращаться к запросам из ViewModel или Interactor без использования блоков try catch и проверок на null для определения результатов запроса.
 
 Может быть в 3 состояниях:
@@ -61,9 +61,11 @@ suspend fun fetchData1(): RequestResult<Int> =
 ```kotlin
 val info = repository.getInfo(id)
 when {
+    // info.isCached() -> // Или проверять в isSuccess
     info.isSuccess() -> {
-		Log.d(TAG, "Receive info successfully. Load from (${if (info.isCached()) "cache" else "api"})")
-        setNormalState(info.data)
+        val fromCache = info.isCached()
+		Log.d(TAG, "Receive info successfully. Load from cache: $fromCache")
+        setNormalState(info.data, fromCache)
     }
     info.isFailure() -> {
         Log.d(TAG, "Error loading data")

@@ -10,9 +10,17 @@ sealed class RequestResult<out T> {
 
     open val status: RequestStatus = RequestStatus(0)
 
-    class EmptyResult : Success<Nothing?>() {
-        override val value: Nothing? = null
+    class EmptyResult<T>(val message: String? = null) : Success<T>() {
+
+        override fun toString() = "Empty ($message)"
+
+        override val value: T
+            get() = error("Empty result doesn't contain value")
     }
+
+//    class EmptyResult : Success<Nothing?>() {
+//        override val value: Nothing? = null
+//    }
 
     sealed class Success<T> : RequestResult<T>() {
 

@@ -4,8 +4,8 @@ import kotlinx.serialization.SerializationException
 import ru.kirillashikhmin.krepost.RequestStatus
 
 object KotlinXSerializationErrorMapper : ErrorMapper {
-    override fun getRequestStatusFromThrowable(throwable: Throwable): RequestStatus? {
+    override fun getErrorDataFromThrowable(throwable: Throwable): ErrorData? {
         if (throwable !is SerializationException) return null
-        return RequestStatus.SerializationError
+        return ErrorData(RequestStatus.SerializationError, null)
     }
 }

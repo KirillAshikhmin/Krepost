@@ -4,9 +4,9 @@ import retrofit2.HttpException
 import ru.kirillashikhmin.krepost.RequestStatus
 
 object RetrofitErrorMapper : ErrorMapper {
-    override fun getRequestStatusFromThrowable(throwable: Throwable): RequestStatus? {
+    override fun getErrorDataFromThrowable(throwable: Throwable): ErrorData? {
         if (throwable !is HttpException) return null
-        return when (throwable.code()) {
+        val status = when (throwable.code()) {
             200 -> RequestStatus.Ok
             304 -> RequestStatus.NotModified
             400 -> RequestStatus.BadRequest
@@ -20,7 +20,8 @@ object RetrofitErrorMapper : ErrorMapper {
             500 -> RequestStatus.InternalServerError
             501 -> RequestStatus.NotImplemented
             503 -> RequestStatus.ServiceUnavailable
-            else -> null
+            else -> return null
         }
+        return ErrorData(status, throwable.response()?.errorBody()?.string())
     }
 }

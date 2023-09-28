@@ -1,6 +1,7 @@
-package  ru.kirillashikhmin.krepost.interfaces
+package  ru.kirillashikhmin.krepost.cache
 
-interface IKrepostCache {
+interface KrepostCache {
+
     fun <T : Any> get(
         key: String,
         keyArguments: String,
@@ -12,5 +13,10 @@ interface IKrepostCache {
         key: String,
         keyArguments: String,
         data: T,
+    )
+
+    fun delete(
+        key: String,
+        keyArguments: String
     )
 }

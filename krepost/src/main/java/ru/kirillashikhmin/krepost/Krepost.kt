@@ -1,15 +1,23 @@
 package ru.kirillashikhmin.krepost
 
 import ru.kirillashikhmin.krepost.errorMappers.ErrorMapper
-import ru.kirillashikhmin.krepost.interfaces.IKrepostCache
+import ru.kirillashikhmin.krepost.cache.KrepostCache
 import ru.kirillashikhmin.krepost.internal.FetchType
 import ru.kirillashikhmin.krepost.internal.KrepostInvocation
+import ru.kirillashikhmin.krepost.serializator.KrepostSerializer
 
+
+/**
+ * TODO:
+ * 1. Validator - validate response, should return Ok, Error, Empty (sealed class, contain optional message)
+ */
 
 class KrepostDSL {
     var config: KrepostConfig? = null
 
-    var cacher: IKrepostCache? = null
+    var cacher: KrepostCache? = null
+
+    var serializer: KrepostSerializer? = null
 
     var errorMappers: List<ErrorMapper>? = null
 }
@@ -17,14 +25,17 @@ class KrepostDSL {
 
 class Krepost(blockDsl: KrepostDSL.() -> Unit = {}) {
 
-    var config: KrepostConfig
-    var cacheManager: IKrepostCache? = null
-    var errorMappers: List<ErrorMapper>? = null
+    internal var config: KrepostConfig
+    internal var cacheManager: KrepostCache? = null
+    internal var serializer: KrepostSerializer? = null
+    internal var errorMappers: List<ErrorMapper>? = null
 
     init {
         val dsl = KrepostDSL().apply(blockDsl)
         config = dsl.config ?: KrepostConfig()
         cacheManager = dsl.cacher
+        serializer = dsl.serializer
+        errorMappers = dsl.errorMappers
     }
 
     /*
@@ -41,7 +52,6 @@ class Krepost(blockDsl: KrepostDSL.() -> Unit = {}) {
         this.config = config
         return this
     }
-
 
     suspend fun <Dto, Model, ErrorDto, ErrorModel : IKrepostError> fetchDataMappedErrorMapped(block: FetchDataDSL<Dto, Model, ErrorDto, ErrorModel>.() -> Unit): RequestResult<Model> {
         val dsl = FetchDataDSL<Dto, Model, ErrorDto, ErrorModel>().apply(block)

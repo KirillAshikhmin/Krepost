@@ -1,8 +1,6 @@
 package ru.kirillashikhmin.krepost.cache
 
-import ru.kirillashikhmin.krepost.interfaces.IKrepostCache
-
-class LruCache : IKrepostCache {
+class LruCache : KrepostCache {
 
     private val cache = mutableMapOf<String, Any>()
 
@@ -15,5 +13,9 @@ class LruCache : IKrepostCache {
 
     override fun <T : Any> write(key: String, keyArguments: String, data: T) {
         cache[key + keyArguments] = data
+    }
+
+    override fun delete(key: String, keyArguments: String) {
+        cache.remove(key + keyArguments)
     }
 }

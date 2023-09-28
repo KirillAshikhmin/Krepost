@@ -8,7 +8,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import ru.kirillashikhmin.krepost.interfaces.IKrepostCache
+import ru.kirillashikhmin.krepost.serializator.KrepostSerializer
 import java.io.File
 import java.io.OutputStreamWriter
 import java.math.BigInteger
@@ -19,7 +19,7 @@ import java.util.*
 
 
 @Suppress("unused")
-class LocalFileCache(cachePath: String) : IKrepostCache {
+class LocalFileCache(cachePath: String, val serializer: KrepostSerializer) : KrepostCache {
 
     companion object {
         const val TAG = "LocalFileCache"
@@ -64,8 +64,9 @@ class LocalFileCache(cachePath: String) : IKrepostCache {
                     Log.e(TAG, "Unable read cache file for key: $key", e)
                 }
                 try {
-                    val zzz : Cache<T> = json.decodeFromString(valueString)
-                    value = zzz.data
+                    value = serializer.deserialize(valueString)
+//                    val zzz : Cache<T> = json.decodeFromString(valueString)
+//                    value = zzz.data
                 } catch (e: Throwable) {
                     Log.e(TAG, "Unable decode cache for key: $key", e)
                 }
@@ -93,7 +94,8 @@ class LocalFileCache(cachePath: String) : IKrepostCache {
             cacheDir.mkdirs()
             val file = File(cacheDir, fileName)
 
-            val json = json.encodeToString(data as Any)
+            val json = serializer.serialize(data)
+//            val json = json.encodeToString(Cache(data))
 
             val outputStream = file.outputStream()
             val osw = OutputStreamWriter(outputStream)
@@ -105,7 +107,7 @@ class LocalFileCache(cachePath: String) : IKrepostCache {
         }
     }
 
-    fun delete(key: String, keyArguments: String) {
+    override fun delete(key: String, keyArguments: String) {
         val cacheKeyArguments = keyArguments.md5()
         val cacheKey = "$key:$cacheKeyArguments"
         val currentFile = getFileNameByKey(cacheKey)

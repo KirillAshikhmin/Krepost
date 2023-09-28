@@ -7,8 +7,10 @@ import ru.kirillashikhmin.krepost.IKrepostError
 import ru.kirillashikhmin.krepost.Krepost
 import ru.kirillashikhmin.krepost.RequestResult
 import ru.kirillashikhmin.krepost.RequestStatus
+import ru.kirillashikhmin.krepost.cache.LocalFileCache
 import ru.kirillashikhmin.krepost.errorMappers.KotlinXSerializationErrorMapper
 import ru.kirillashikhmin.krepost.errorMappers.RetrofitErrorMapper
+import ru.kirillashikhmin.krepost.serializator.KotlinXSerializer
 import ru.kirillashikhmin.repository.dto.ProductsDto
 
 @ExperimentalSerializationApi
@@ -31,6 +33,8 @@ class Repository {
             KotlinXSerializationErrorMapper,
             RetrofitErrorMapper
         )
+        serializer = KotlinXSerializer
+        cacher = LocalFileCache(".",KotlinXSerializer)
     }
 
     class MyKrepostError : IKrepostError {

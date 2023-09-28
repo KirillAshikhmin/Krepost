@@ -14,8 +14,9 @@ mapper { data -> data.filter { it.isActive } }
 
 class FetchDataDSL<Dto, Model, ErrorDto, ErrorModel : IKrepostError> {
     lateinit var action: suspend () -> Dto
-    var cache: FetchDataCacheDSL? = null
-    var mapper: ((Dto?) -> Model)? = null
+    internal var cache: FetchDataCacheDSL? = null
+    internal var mapper: ((Dto) -> Model)? = null
+    internal var validator: ((Dto?) -> ValidateResult)? = null
 
     var config : KrepostConfig? = null
 
@@ -29,8 +30,12 @@ class FetchDataDSL<Dto, Model, ErrorDto, ErrorModel : IKrepostError> {
         this.cache = cache
     }
 
-    fun mapper(block: (Dto?) -> Model) {
+    fun mapper(block: (Dto) -> Model) {
         mapper = block
+    }
+
+    fun validator(block: (Dto?) -> ValidateResult) {
+        validator = block
     }
 }
 
