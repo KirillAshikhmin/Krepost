@@ -1,3 +1,6 @@
 package ru.kirillashikhmin.krepost
 
-class KrepostRequestException(val innerException: Throwable, val status: RequestStatus?) : Exception()
+import ru.kirillashikhmin.krepost.errorMappers.ErrorData
+
+class KrepostRequestException(val innerException: Throwable, val errorData: ErrorData) : Exception()
+class KrepostCacheException(val innerException: Throwable, val write: Boolean) : Exception()

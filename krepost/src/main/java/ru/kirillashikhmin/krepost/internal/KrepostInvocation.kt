@@ -1,22 +1,25 @@
 package ru.kirillashikhmin.krepost.internal
 
 import kotlinx.coroutines.delay
+import ru.kirillashikhmin.krepost.CacheStrategy
 import ru.kirillashikhmin.krepost.CacheStrategy.Companion.needGetCachedResultBeforeLoad
 import ru.kirillashikhmin.krepost.FetchDataCacheDSL
 import ru.kirillashikhmin.krepost.FetchDataDSL
 import ru.kirillashikhmin.krepost.IKrepostError
 import ru.kirillashikhmin.krepost.Krepost
+import ru.kirillashikhmin.krepost.KrepostCacheException
 import ru.kirillashikhmin.krepost.KrepostRequestException
 import ru.kirillashikhmin.krepost.RequestResult
 import ru.kirillashikhmin.krepost.RequestStatus
 import ru.kirillashikhmin.krepost.ValidateResult
 import ru.kirillashikhmin.krepost.cache.KrepostCache
+import ru.kirillashikhmin.krepost.errorMappers.ErrorData
 
 object KrepostInvocation {
 
     suspend fun <Dto, Model, ErrorDto, ErrorModel : IKrepostError> fetchDataInvocation(
         fetchDsl: FetchDataDSL<Dto, Model, ErrorDto, ErrorModel>,
-        type: FetchType,
+        fetchType: FetchType,
         krepost: Krepost,
     ): RequestResult<Model> {
 
@@ -83,6 +86,7 @@ object KrepostInvocation {
         }
          */
 
+
         val cacheManager = krepost.cacheManager
         val cache = fetchDsl.cache
         if (cacheManager != null && cache != null && cache.strategy.needGetCachedResultBeforeLoad) {
@@ -90,6 +94,9 @@ object KrepostInvocation {
             val data = cacheResult.first
             if (data != null)
                 return RequestResult.Cached.Value(data, cacheResult.second)
+        }
+        if (cache?.strategy == CacheStrategy.Only) {
+            return RequestResult.EmptyResult()
         }
 
         val validator = fetchDsl.validator
@@ -109,7 +116,9 @@ object KrepostInvocation {
                 return RequestResult.EmptyResult()
             }
 
-            val result = mapper?.invoke(invokeResult) ?: invokeResult
+            val result = if (fetchType.type >= 2) {
+                mapper?.invoke(invokeResult) ?: invokeResult
+            } else invokeResult
 
             val cacheKeyArguments = getCacheKeyArguments(cache)
 
@@ -118,29 +127,54 @@ object KrepostInvocation {
                 return RequestResult.EmptyResult()
             }
 
-            val cacheTime = cache?.cacheTimeMilliseconds
-            if (result != null && cacheManager != null && cacheTime != null && cacheTime > 0L) {
-                cacheManager.write(
-                    key = cache.name,
-                    keyArguments = cacheKeyArguments,
-                    data = result
-                )
-            }
+            writeCacheIfNeeded(cache, cacheManager, result)
 
             @Suppress("UNCHECKED_CAST")
             return RequestResult.Success.Value(result as Model)
 
         } catch (requestException: KrepostRequestException) {
-            if (cache != null) cacheManager?.delete(cache.name, getCacheKeyArguments(cache))
-            val status = requestException.status ?: RequestStatus.UnknownRequestError
-
-            return RequestResult.Failure.Error(status)
+            val errorData = requestException.errorData
+            val errorResponse = errorData.response
+            if (errorResponse != null) {
+                val error = krepost.serializer?.deserialize<ErrorDto>(errorResponse)
+            }
+            return RequestResult.Failure.Error(errorData.status)
+        } catch (cacheException: KrepostCacheException) {
+            if (cacheException.write.not()) deleteCache(cacheManager, cache)
+            return RequestResult.Failure.Error(RequestStatus.CacheError)
         } catch (t: Throwable) {
             return RequestResult.Failure.Error(
                 status = RequestStatus.KrepostInternalError,
                 message = t.localizedMessage,
                 throwable = t
             )
+        }
+    }
+
+    private fun deleteCache(cacheManager: KrepostCache?, cache: FetchDataCacheDSL?) {
+        if (cache != null) {
+            cacheManager?.delete(cache.name, getCacheKeyArguments(cache))
+        }
+    }
+
+    private fun <T : Any> writeCacheIfNeeded(
+        cache: FetchDataCacheDSL?,
+        cacheManager: KrepostCache?,
+        result: T?,
+    ) {
+        if (cache == null || cacheManager == null || cache.strategy != CacheStrategy.Never) return
+        try {
+            val cacheKeyArguments = getCacheKeyArguments(cache)
+            val cacheTime = cache.cacheTimeMilliseconds
+            if (result != null && cacheTime != null && cacheTime > 0L) {
+                cacheManager.write(
+                    key = cache.name,
+                    keyArguments = cacheKeyArguments,
+                    data = result
+                )
+            }
+        } catch (t: Throwable) {
+            throw KrepostCacheException(t, write = true)
         }
     }
 
@@ -159,23 +193,23 @@ object KrepostInvocation {
         var exception: Throwable?
         var result: Dto? = null
         var retryRemained = retryCount
-        var status: RequestStatus? = null
+        var errorData: ErrorData? = null
         do {
             try {
                 result = fetchDsl.action()
                 exception = null
             } catch (e: Throwable) {
                 exception = e
-                status = statusFromException(krepost, e)
-                if (noRetryStatuses.contains(status))
+                errorData = statusFromException(krepost, e)
+                if (noRetryStatuses.contains(errorData.status))
                     retryRemained = 0
                 else delay(retryDelay)
             }
             retryRemained--
         } while (exception != null && retryRemained > 0)
 
-        if (exception != null) {
-            throw KrepostRequestException(exception, status)
+        if (exception != null && errorData != null) {
+            throw KrepostRequestException(exception, errorData)
         }
 
         return result
@@ -184,8 +218,8 @@ object KrepostInvocation {
     private fun statusFromException(
         krepost: Krepost,
         e: Throwable,
-    ) = (krepost.errorMappers?.firstNotNullOf { it.getErrorDataFromThrowable(e) }
-        ?: RequestStatus.UnknownRequestError)
+    ): ErrorData = krepost.errorMappers?.firstNotNullOfOrNull { it.getErrorDataFromThrowable(e) }
+        ?: ErrorData(RequestStatus.Unknown, null)
 
     private fun <Model> getCache(
         cacheManager: KrepostCache,
