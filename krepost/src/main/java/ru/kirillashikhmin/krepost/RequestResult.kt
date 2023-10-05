@@ -10,7 +10,7 @@ sealed class RequestResult<out T> {
 
     open val status: RequestStatus = RequestStatus(0)
 
-    class EmptyResult<T>(val message: String? = null) : Success<T>() {
+    class Empty<T>(val message: String? = null) : Success<T>() {
 
         override fun toString() = "Empty ($message)"
 

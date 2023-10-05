@@ -110,10 +110,10 @@ object KrepostInvocation {
             val validationResult = validator?.invoke(invokeResult) ?: ValidateResult.Ok
 
             if (validationResult is ValidateResult.Empty) {
-                return RequestResult.EmptyResult(validationResult.message)
+                return RequestResult.Empty(validationResult.message)
             }
             if (invokeResult == null) {
-                return RequestResult.EmptyResult()
+                return RequestResult.Empty()
             }
 
             val result = if (fetchType.type >= 2) {
@@ -124,7 +124,7 @@ object KrepostInvocation {
 
             if (result == null) {
                 if (cache != null) cacheManager?.delete(cache.name, cacheKeyArguments)
-                return RequestResult.EmptyResult()
+                return RequestResult.Empty()
             }
 
             writeCacheIfNeeded(cache, cacheManager, result)
