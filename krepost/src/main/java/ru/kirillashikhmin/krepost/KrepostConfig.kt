@@ -19,14 +19,14 @@ data class KrepostConfig(
         const val defaultDeleteCacheIfOutdated = true
         const val defaultRetryCount = 3
         const val defaultRetryDelayMilliseconds = 300L
-        val defaultNoRetryStatuses = listOf(
-            RequestStatus.NotFound,
-            RequestStatus.Unprocessable,
-            RequestStatus.Forbidden,
-            RequestStatus.Unauthorized,
-            RequestStatus.BadRequest,
-            RequestStatus.SerializationError,
-            RequestStatus.NotImplemented,
+        val defaultNoRetryStatuses = listOf<RequestStatus>(
+//            RequestStatus.NotFound,
+//            RequestStatus.Unprocessable,
+//            RequestStatus.Forbidden,
+//            RequestStatus.Unauthorized,
+//            RequestStatus.BadRequest,
+//            RequestStatus.SerializationError,
+//            RequestStatus.NotImplemented,
         )
     }
 }

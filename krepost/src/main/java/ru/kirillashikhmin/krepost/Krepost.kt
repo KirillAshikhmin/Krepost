@@ -7,11 +7,6 @@ import ru.kirillashikhmin.krepost.internal.KrepostInvocation
 import ru.kirillashikhmin.krepost.serializator.KrepostSerializer
 
 
-/**
- * TODO:
- * 1. Validator - validate response, should return Ok, Error, Empty (sealed class, contain optional message)
- */
-
 class KrepostDSL {
     var config: KrepostConfig? = null
 
@@ -23,6 +18,7 @@ class KrepostDSL {
 }
 
 
+@Suppress("unused")
 class Krepost(blockDsl: KrepostDSL.() -> Unit = {}) {
 
     internal var config: KrepostConfig
@@ -38,37 +34,35 @@ class Krepost(blockDsl: KrepostDSL.() -> Unit = {}) {
         errorMappers = dsl.errorMappers
     }
 
-    /*
-    constructor(config: KrepostConfig) : this() {
-        setConfig(config.copy())
-    }
-    constructor(block: KrepostConfig.() -> Unit = {}) : this() {
-        val config = KrepostConfig()
-        config.block()
-        setConfig(config.copy())
-    }*/
-
     fun setConfig(config: KrepostConfig): Krepost {
         this.config = config
         return this
     }
 
-    suspend fun <Dto, Model, ErrorDto, ErrorModel : IKrepostError> fetchDataMappedErrorMapped(block: FetchDataDSL<Dto, Model, ErrorDto, ErrorModel>.() -> Unit): RequestResult<Model> {
+    suspend fun <Dto, Model, ErrorDto : Any, ErrorModel : IKrepostError> fetchDataMappedAndErrorMapped(
+        block: FetchDataDSL<Dto, Model, ErrorDto, ErrorModel>.() -> Unit
+    ): RequestResult<Model> {
         val dsl = FetchDataDSL<Dto, Model, ErrorDto, ErrorModel>().apply(block)
         return KrepostInvocation.fetchDataInvocation(dsl, FetchType.ModelMappedErrorMapped, this)
     }
 
-    suspend fun <Dto, Model, ErrorDto> fetchDataMappedError(block: FetchDataDSL<Dto, Model, ErrorDto, Nothing>.() -> Unit): RequestResult<Model> {
+    suspend fun <Dto, Model, ErrorDto : Any> fetchDataMappedAndError(
+        block: FetchDataDSL<Dto, Model, ErrorDto, Nothing>.() -> Unit
+    ): RequestResult<Model> {
         val dsl = FetchDataDSL<Dto, Model, ErrorDto, Nothing>().apply(block)
         return KrepostInvocation.fetchDataInvocation(dsl, FetchType.ModelMappedError, this)
     }
 
-    suspend fun <Dto, Model> fetchDataMapped(block: FetchDataDSL<Dto, Model, Nothing, Nothing>.() -> Unit): RequestResult<Model> {
+    suspend fun <Dto, Model> fetchDataMapped(
+        block: FetchDataDSL<Dto, Model, Nothing, Nothing>.() -> Unit
+    ): RequestResult<Model> {
         val dsl = FetchDataDSL<Dto, Model, Nothing, Nothing>().apply(block)
         return KrepostInvocation.fetchDataInvocation(dsl, FetchType.ModelMapped, this)
     }
 
-    suspend fun <Dto> fetchData(block: FetchDataDSL<Dto, Dto, Nothing, Nothing>.() -> Unit): RequestResult<Dto> {
+    suspend fun <Dto> fetchData(
+        block: FetchDataDSL<Dto, Dto, Nothing, Nothing>.() -> Unit
+    ): RequestResult<Dto> {
         val dsl = FetchDataDSL<Dto, Dto, Nothing, Nothing>().apply(block)
         return KrepostInvocation.fetchDataInvocation(dsl, FetchType.Dto, this)
     }

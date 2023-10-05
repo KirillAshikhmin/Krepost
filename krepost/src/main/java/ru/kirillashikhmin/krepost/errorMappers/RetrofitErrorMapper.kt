@@ -4,7 +4,10 @@ import retrofit2.HttpException
 import ru.kirillashikhmin.krepost.RequestStatus
 
 object RetrofitErrorMapper : ErrorMapper {
-    override fun getErrorDataFromThrowable(throwable: Throwable): ErrorData? {
+    override fun getErrorDataFromThrowable(
+        throwable: Throwable,
+        isGetResponseFromException: Boolean
+    ): ErrorData? {
         if (throwable !is HttpException) return null
         val status = when (throwable.code()) {
             200 -> RequestStatus.Ok
@@ -22,6 +25,7 @@ object RetrofitErrorMapper : ErrorMapper {
             503 -> RequestStatus.ServiceUnavailable
             else -> return null
         }
-        return ErrorData(status, throwable.response()?.errorBody()?.string())
+        val response = if (isGetResponseFromException) throwable.response()?.errorBody()?.string() else null
+        return ErrorData(status, response)
     }
 }

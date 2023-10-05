@@ -96,6 +96,14 @@ fun <T> RequestResult<T>.isCached(): Boolean {
 }
 
 @OptIn(ExperimentalContracts::class)
+fun <T> RequestResult<T>.isEmpty(): Boolean {
+    contract {
+        returns(true) implies (this@isEmpty is RequestResult.Empty<T>)
+    }
+    return this is RequestResult.Empty<T>
+}
+
+@OptIn(ExperimentalContracts::class)
 fun <T> RequestResult<T>.isOutdated(): Boolean {
     contract {
         returns(true) implies (this@isOutdated is RequestResult.Outdated<T>)

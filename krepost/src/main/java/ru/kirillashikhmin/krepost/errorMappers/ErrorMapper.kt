@@ -7,5 +7,5 @@ interface ErrorMapper {
      * otherwise null if an unknown throwable was received as input,
      * or you won't process this throwable.
      */
-    fun getErrorDataFromThrowable(throwable : Throwable) : ErrorData?
+    fun getErrorDataFromThrowable(throwable: Throwable, isGetResponseFromException: Boolean) : ErrorData?
 }

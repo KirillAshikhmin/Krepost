@@ -8,7 +8,6 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.ExperimentalSerializationApi
 import ru.kirillashikhmin.krepost.*
 import ru.kirillashikhmin.repository.Repository
-import ru.kirillashikhmin.repository.dto.ProductsDto
 
 @ExperimentalSerializationApi
 class MainViewModel : ViewModel() {
@@ -23,8 +22,8 @@ class MainViewModel : ViewModel() {
     fun fetchData() {
         viewModelScope.launch {
             setLoadingState()
-            val products = repository.getProducts()
-            setFetchingStatus(products)
+            val fetchResult = repository.fetchData4()
+            setFetchingStatus(fetchResult)
         }
     }
 
@@ -54,7 +53,7 @@ class MainViewModel : ViewModel() {
                 "Outdated ${code}. CacheTime: ${result.cacheTime}"
             else _statusLiveData.value = "Success $code"
 
-            _resultLiveData.value = result.asSuccess().value.toString().toIndentString()
+            _resultLiveData.value = if (result.isEmpty()) "empty" else  result.asSuccess().value.toString().toIndentString()
         } else if (result.isFailure()) {
             _statusLiveData.value = "Failure $code"
             _resultLiveData.value = result.message + "\n" +

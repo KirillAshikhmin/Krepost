@@ -1,8 +1,11 @@
 package  ru.kirillashikhmin.krepost
 
 
-@Suppress("unused")
-open class RequestStatus(val code: Int) {
+@Suppress("unused", "MagicNumber")
+open class RequestStatus(internalCode: Int = 0) {
+
+    val code = internalCode
+
     object Unknown : RequestStatus(0)
 
     //Http codes
@@ -27,7 +30,8 @@ open class RequestStatus(val code: Int) {
     object InvalidRequest : RequestStatus(1002)
     object SerializationError : RequestStatus(1003)
     object CacheError : RequestStatus(1004)
-    object UnknownRequestError : RequestStatus(1005)
+    object MappingError : RequestStatus(1005)
+    object UnknownRequestError : RequestStatus(1006)
     object NoInternet : RequestStatus(1100)
 
 
@@ -43,25 +47,25 @@ open class RequestStatus(val code: Int) {
             return statuses[code] ?: RequestStatus.Unknown
         }
 
-    private val statuses = mutableMapOf(
-        Unknown.code to Unknown,
-        Ok.code to Ok,
-        NotModified.code to NotModified,
-        BadRequest.code to BadRequest,
-        Unauthorized.code to Unauthorized,
-        Forbidden.code to Forbidden,
-        NotFound.code to NotFound,
-        NotAcceptable.code to NotAcceptable,
-        RequestEntityTooLarge.code to RequestEntityTooLarge,
-        Unprocessable.code to Unprocessable,
-        InternalServerError.code to InternalServerError,
-        NotImplemented.code to NotImplemented,
-        ServiceUnavailable.code to ServiceUnavailable,
-        Canceled.code to Canceled,
-        InvalidRequest.code to InvalidRequest,
-        SerializationError.code to SerializationError,
-        CacheError.code to CacheError,
-        NoInternet.code to NoInternet,
-    )
+        private val statuses = mutableMapOf(
+            Unknown.code to Unknown,
+            Ok.code to Ok,
+            NotModified.code to NotModified,
+            BadRequest.code to BadRequest,
+            Unauthorized.code to Unauthorized,
+            Forbidden.code to Forbidden,
+            NotFound.code to NotFound,
+            NotAcceptable.code to NotAcceptable,
+            RequestEntityTooLarge.code to RequestEntityTooLarge,
+            Unprocessable.code to Unprocessable,
+            InternalServerError.code to InternalServerError,
+            NotImplemented.code to NotImplemented,
+            ServiceUnavailable.code to ServiceUnavailable,
+            Canceled.code to Canceled,
+            InvalidRequest.code to InvalidRequest,
+            SerializationError.code to SerializationError,
+            CacheError.code to CacheError,
+            NoInternet.code to NoInternet,
+        )
     }
 }

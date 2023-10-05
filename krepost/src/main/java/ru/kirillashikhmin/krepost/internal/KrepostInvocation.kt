@@ -1,5 +1,6 @@
 package ru.kirillashikhmin.krepost.internal
 
+import android.util.Log
 import kotlinx.coroutines.delay
 import ru.kirillashikhmin.krepost.CacheStrategy
 import ru.kirillashikhmin.krepost.CacheStrategy.Companion.needGetCachedResultBeforeLoad
@@ -17,7 +18,7 @@ import ru.kirillashikhmin.krepost.errorMappers.ErrorData
 
 object KrepostInvocation {
 
-    suspend fun <Dto, Model, ErrorDto, ErrorModel : IKrepostError> fetchDataInvocation(
+    suspend fun <Dto, Model, ErrorDto : Any, ErrorModel : IKrepostError> fetchDataInvocation(
         fetchDsl: FetchDataDSL<Dto, Model, ErrorDto, ErrorModel>,
         fetchType: FetchType,
         krepost: Krepost,
@@ -96,7 +97,7 @@ object KrepostInvocation {
                 return RequestResult.Cached.Value(data, cacheResult.second)
         }
         if (cache?.strategy == CacheStrategy.Only) {
-            return RequestResult.EmptyResult()
+            return RequestResult.Empty()
         }
 
         val validator = fetchDsl.validator
@@ -104,7 +105,9 @@ object KrepostInvocation {
 
         try {
 
-            val invokeResult = invokeWithRetry(fetchDsl, krepost)
+            val isGetResponseFromException = fetchType.type >= FetchType.ModelMappedError.type
+
+            val invokeResult = invokeWithRetry(fetchDsl, krepost, isGetResponseFromException)
 
 
             val validationResult = validator?.invoke(invokeResult) ?: ValidateResult.Ok
@@ -116,7 +119,7 @@ object KrepostInvocation {
                 return RequestResult.Empty()
             }
 
-            val result = if (fetchType.type >= 2) {
+            val result = if (fetchType.type >= FetchType.ModelMapped.type) {
                 mapper?.invoke(invokeResult) ?: invokeResult
             } else invokeResult
 
@@ -136,13 +139,39 @@ object KrepostInvocation {
             val errorData = requestException.errorData
             val errorResponse = errorData.response
             if (errorResponse != null) {
-                val error = krepost.serializer?.deserialize<ErrorDto>(errorResponse)
+                val error = try {
+                    krepost.serializer?.deserialize<ErrorDto>(errorResponse)
+                } catch (t: Throwable) {
+                    return RequestResult.Failure.Error(
+                        RequestStatus.SerializationError,
+                        "Unable to deserialize error response",
+                        t
+                    )
+                }
+                if (error != null) {
+                    if (fetchType.type >= FetchType.ModelMappedErrorMapped.type) {
+                        return try {
+                            val mapperError = fetchDsl.errorMapper?.invoke(error)
+                            RequestResult.Failure.ErrorWithData(
+                                mapperError as ErrorModel,
+                                errorData.status
+                            )
+                        } catch (t: Throwable) {
+                            RequestResult.Failure.Error(
+                                RequestStatus.MappingError,
+                                "Unable to mapping error response",
+                                t
+                            )
+                        }
+                    }
+                }
             }
             return RequestResult.Failure.Error(errorData.status)
         } catch (cacheException: KrepostCacheException) {
             if (cacheException.write.not()) deleteCache(cacheManager, cache)
             return RequestResult.Failure.Error(RequestStatus.CacheError)
         } catch (t: Throwable) {
+            Log.d("Krepost", "KrepostInternalError", t)
             return RequestResult.Failure.Error(
                 status = RequestStatus.KrepostInternalError,
                 message = t.localizedMessage,
@@ -153,7 +182,12 @@ object KrepostInvocation {
 
     private fun deleteCache(cacheManager: KrepostCache?, cache: FetchDataCacheDSL?) {
         if (cache != null) {
-            cacheManager?.delete(cache.name, getCacheKeyArguments(cache))
+            val arguments = getCacheKeyArguments(cache)
+            try {
+                cacheManager?.delete(cache.name, arguments)
+            } catch (t: Throwable) {
+                Log.d("Krepost", "Unable to delete cache: ${cache.name}#$arguments", t)
+            }
         }
     }
 
@@ -184,6 +218,7 @@ object KrepostInvocation {
     private suspend fun <Dto, Model, ErrorDto, ErrorModel : IKrepostError> invokeWithRetry(
         fetchDsl: FetchDataDSL<Dto, Model, ErrorDto, ErrorModel>,
         krepost: Krepost,
+        isGetResponseFromException: Boolean
     ): Dto? {
         val retryCount = fetchDsl.config?.retryCount ?: krepost.config.retryCount
         val retryDelay =
@@ -200,7 +235,7 @@ object KrepostInvocation {
                 exception = null
             } catch (e: Throwable) {
                 exception = e
-                errorData = statusFromException(krepost, e)
+                errorData = statusFromException(krepost, e, isGetResponseFromException)
                 if (noRetryStatuses.contains(errorData.status))
                     retryRemained = 0
                 else delay(retryDelay)
@@ -218,7 +253,10 @@ object KrepostInvocation {
     private fun statusFromException(
         krepost: Krepost,
         e: Throwable,
-    ): ErrorData = krepost.errorMappers?.firstNotNullOfOrNull { it.getErrorDataFromThrowable(e) }
+        isGetResponseFromException: Boolean
+    ): ErrorData = krepost.errorMappers?.firstNotNullOfOrNull {
+        it.getErrorDataFromThrowable(e, isGetResponseFromException)
+    }
         ?: ErrorData(RequestStatus.Unknown, null)
 
     private fun <Model> getCache(
