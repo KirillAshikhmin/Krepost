@@ -1,6 +1,9 @@
 package ru.kirillashikhmin.krepost.internal
 
 import android.util.Log
+import com.squareup.moshi.JsonAdapter
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import kotlinx.coroutines.delay
 import ru.kirillashikhmin.krepost.CacheStrategy
 import ru.kirillashikhmin.krepost.CacheStrategy.Companion.needGetCachedResultBeforeLoad
@@ -18,12 +21,11 @@ import ru.kirillashikhmin.krepost.errorMappers.ErrorData
 
 object KrepostInvocation {
 
-    suspend fun <Dto, Model, ErrorDto : Any, ErrorModel : IKrepostError> fetchDataInvocation(
+    suspend inline fun <Dto, Model, reified ErrorDto : Any, ErrorModel : IKrepostError> fetchDataInvocation(
         fetchDsl: FetchDataDSL<Dto, Model, ErrorDto, ErrorModel>,
         fetchType: FetchType,
         krepost: Krepost,
     ): RequestResult<Model> {
-
 
         /*
          val useCache = ConfigUtils.isUseCache(config, cache)
@@ -87,7 +89,147 @@ object KrepostInvocation {
         }
          */
 
+        return try {
+            val result = getCacheResult(krepost, fetchDsl) ?: invoke(fetchDsl, krepost, fetchType)
+            result
+        } catch (requestException: KrepostRequestException) {
+            try {
+                processRequestException(requestException, fetchType, fetchDsl)
+            } catch (t: Throwable) {
+                Log.d("Krepost", "KrepostInternalError", t)
+                RequestResult.Empty<Model>(t.localizedMessage)
+            }
+        } catch (cacheException: KrepostCacheException) {
+            try {
+                processCacheException(cacheException, fetchDsl, krepost)
+            } catch (t: Throwable) {
+                Log.d("Krepost", "KrepostInternalError", t)
+                RequestResult.Empty<Model>(t.localizedMessage)
+            }
+        } catch (t: Throwable) {
+            Log.d("Krepost", "KrepostInternalError", t)
+            RequestResult.Failure.Error(
+                status = RequestStatus.KrepostInternalError,
+                message = t.localizedMessage,
+                throwable = t
+            )
+        }
+    }
 
+    suspend fun <Dto, Model, ErrorDto : Any, ErrorModel : IKrepostError> invoke(
+        fetchDsl: FetchDataDSL<Dto, Model, ErrorDto, ErrorModel>,
+        krepost: Krepost,
+        fetchType: FetchType
+    ): RequestResult.Success<Model> {
+        val validator = fetchDsl.validator
+        val mapper = fetchDsl.mapper
+        val cache = fetchDsl.cache
+        val cacheManager = krepost.cacheManager
+
+        val isGetResponseFromException = fetchType.type >= FetchType.ModelMappedError.type
+
+        val invokeResult = invokeWithRetry(fetchDsl, krepost, isGetResponseFromException)
+
+        val validationResult = validator?.invoke(invokeResult) ?: ValidateResult.Ok
+
+        if (validationResult is ValidateResult.Empty) {
+            return RequestResult.Empty(validationResult.message)
+        }
+        if (invokeResult == null) {
+            return RequestResult.Empty()
+        }
+
+        val result = if (fetchType.type >= FetchType.ModelMapped.type) {
+            mapper?.invoke(invokeResult) ?: invokeResult
+        } else invokeResult
+
+        val cacheKeyArguments = getCacheKeyArguments(cache)
+
+        if (result == null) {
+            if (cache != null) cacheManager?.delete(cache.name, cacheKeyArguments)
+            return RequestResult.Empty()
+        }
+
+        writeCacheIfNeeded(cache, cacheManager, result)
+
+        @Suppress("UNCHECKED_CAST")
+        return RequestResult.Success.Value(result as Model)
+    }
+
+    inline fun <Dto, Model, reified ErrorDto : Any, ErrorModel : IKrepostError> processRequestException(
+        requestException: KrepostRequestException,
+        fetchType: FetchType,
+        fetchDsl: FetchDataDSL<Dto, Model, ErrorDto, ErrorModel>
+    ): RequestResult<Model> {
+        val errorData = requestException.errorData
+        val errorResponse = requestException.errorData.response
+        if (errorResponse != null) {
+            val error = try {
+                deserialize<ErrorDto>(errorResponse)
+            } catch (t: Throwable) {
+                return RequestResult.Failure.Error(
+                    RequestStatus.SerializationError,
+                    "Unable to deserialize error response",
+                    t
+                )
+            }
+            val result = returnErrorRequest(fetchDsl, error, fetchType, errorData, requestException.innerException)
+            if (result != null) return result
+        }
+        return RequestResult.Failure.Error(
+            errorData.status,
+            throwable = requestException.innerException
+        )
+    }
+
+    fun <Dto, Model, ErrorDto : Any, ErrorModel : IKrepostError> processCacheException(
+        cacheException: KrepostCacheException,
+        fetchDsl: FetchDataDSL<Dto, Model, ErrorDto, ErrorModel>,
+        krepost: Krepost
+    ): RequestResult.Failure.Error {
+        if (cacheException.write.not()) deleteCache(krepost.cacheManager, fetchDsl.cache)
+        return RequestResult.Failure.Error(RequestStatus.CacheError)
+    }
+
+    fun <Dto, Model, ErrorDto : Any, ErrorModel : IKrepostError> returnErrorRequest(
+        fetchDsl: FetchDataDSL<Dto, Model, ErrorDto, ErrorModel>,
+        error: ErrorDto?,
+        fetchType: FetchType,
+        errorData: ErrorData,
+        innerException: Throwable
+    ): RequestResult<Model>? {
+        if (error != null) {
+            if (fetchType.type >= FetchType.ModelMappedErrorMapped.type) {
+                return try {
+                    val mapperError = fetchDsl.errorMapper?.invoke(error)
+                    RequestResult.Failure.ErrorWithData(
+                        mapperError as ErrorModel,
+                        errorData.status,
+                        mapperError.errorMessage,
+                        innerException
+                    )
+                } catch (t: Throwable) {
+                    RequestResult.Failure.Error(
+                        RequestStatus.MappingError,
+                        "Unable to mapping error response",
+                        t
+                    )
+                }
+            } else {
+                RequestResult.Failure.ErrorWithData(
+                    error as ErrorDto,
+                    errorData.status,
+                    throwable = innerException
+                )
+            }
+        }
+        return null
+    }
+
+    fun <Dto, Model, ErrorDto, ErrorModel : IKrepostError> getCacheResult(
+        krepost: Krepost,
+        fetchDsl: FetchDataDSL<Dto, Model, ErrorDto, ErrorModel>
+    ): RequestResult.Success<out Model>? {
         val cacheManager = krepost.cacheManager
         val cache = fetchDsl.cache
         if (cacheManager != null && cache != null && cache.strategy.needGetCachedResultBeforeLoad) {
@@ -99,85 +241,16 @@ object KrepostInvocation {
         if (cache?.strategy == CacheStrategy.Only) {
             return RequestResult.Empty()
         }
+        return null
+    }
 
-        val validator = fetchDsl.validator
-        val mapper = fetchDsl.mapper
+    val moshi = Moshi.Builder()
+        .addLast(KotlinJsonAdapterFactory())
+        .build()
 
-        try {
-
-            val isGetResponseFromException = fetchType.type >= FetchType.ModelMappedError.type
-
-            val invokeResult = invokeWithRetry(fetchDsl, krepost, isGetResponseFromException)
-
-
-            val validationResult = validator?.invoke(invokeResult) ?: ValidateResult.Ok
-
-            if (validationResult is ValidateResult.Empty) {
-                return RequestResult.Empty(validationResult.message)
-            }
-            if (invokeResult == null) {
-                return RequestResult.Empty()
-            }
-
-            val result = if (fetchType.type >= FetchType.ModelMapped.type) {
-                mapper?.invoke(invokeResult) ?: invokeResult
-            } else invokeResult
-
-            val cacheKeyArguments = getCacheKeyArguments(cache)
-
-            if (result == null) {
-                if (cache != null) cacheManager?.delete(cache.name, cacheKeyArguments)
-                return RequestResult.Empty()
-            }
-
-            writeCacheIfNeeded(cache, cacheManager, result)
-
-            @Suppress("UNCHECKED_CAST")
-            return RequestResult.Success.Value(result as Model)
-
-        } catch (requestException: KrepostRequestException) {
-            val errorData = requestException.errorData
-            val errorResponse = errorData.response
-            if (errorResponse != null) {
-                val error = try {
-                    krepost.serializer?.deserialize<ErrorDto>(errorResponse)
-                } catch (t: Throwable) {
-                    return RequestResult.Failure.Error(
-                        RequestStatus.SerializationError,
-                        "Unable to deserialize error response",
-                        t
-                    )
-                }
-                if (error != null) {
-                    if (fetchType.type >= FetchType.ModelMappedErrorMapped.type) {
-                        return try {
-                            val mapperError = fetchDsl.errorMapper?.invoke(error)
-                            RequestResult.Failure.ErrorWithData(
-                                mapperError as ErrorModel,
-                                errorData.status
-                            )
-                        } catch (t: Throwable) {
-                            RequestResult.Failure.Error(
-                                RequestStatus.MappingError,
-                                "Unable to mapping error response",
-                                t
-                            )
-                        }
-                    }
-                }
-            }
-            return RequestResult.Failure.Error(errorData.status)
-        } catch (cacheException: KrepostCacheException) {
-            if (cacheException.write.not()) deleteCache(cacheManager, cache)
-            return RequestResult.Failure.Error(RequestStatus.CacheError)
-        } catch (t: Throwable) {
-            Log.d("Krepost", "KrepostInternalError", t)
-            return RequestResult.Failure.Error(
-                status = RequestStatus.KrepostInternalError,
-                message = t.localizedMessage,
-                throwable = t
-            )
-        }
+    inline fun <reified T : Any> deserialize(json: String): T? {
+        val jsonAdapter: JsonAdapter<T> = moshi.adapter(T::class.java)
+        return jsonAdapter.fromJson(json)
     }
 
     private fun deleteCache(cacheManager: KrepostCache?, cache: FetchDataCacheDSL?) {

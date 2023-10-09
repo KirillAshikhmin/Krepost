@@ -16,4 +16,3 @@ rootProject.name = "Repo"
 include ':app'
 include ':krepost'
 include ':repository'
-include ':lib'

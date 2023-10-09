@@ -18,6 +18,13 @@ class MainViewModel : ViewModel() {
     val statusLiveData: LiveData<String> = _statusLiveData
 
     private val repository = Repository()
+init {
+//    val z = RequestStatus()
+    val z1 = RequestStatusTest(199)
+    val z2 = RequestStatusTest2()
+    val zz = RequestStatus.Ok
+    val zzz = RequestStatus.KrepostInternalError
+}
 
     fun fetchData() {
         viewModelScope.launch {
@@ -45,23 +52,26 @@ class MainViewModel : ViewModel() {
     }
 
     private fun setFetchingStatus(result: RequestResult<*>) {
-        val code = "(${result.status::class.java.simpleName})"
-        if (result.isSuccess()) {
-            if (result.isCached()) _statusLiveData.value =
-                "Cached ${code}. CacheTime: ${result.cacheTime}"
-            else if (result.isOutdated()) _statusLiveData.value =
-                "Outdated ${code}. CacheTime: ${result.cacheTime}"
-            else _statusLiveData.value = "Success $code"
+        val statusName = result.status::class.java.simpleName
+        val code = result.status.codeTest
+        when {
+            result.isSuccess() -> {
+                if (result.isCached()) _statusLiveData.value =
+                    "Cached ${code}. CacheTime: ${result.cacheTime}"
+                else if (result.isOutdated()) _statusLiveData.value =
+                    "Outdated ${code}. CacheTime: ${result.cacheTime}"
+                else _statusLiveData.value = "Success $statusName ($code)"
 
-            _resultLiveData.value = if (result.isEmpty()) "empty" else  result.asSuccess().value.toString().toIndentString()
-        } else if (result.isFailure()) {
-            _statusLiveData.value = "Failure $code"
-            _resultLiveData.value = result.message + "\n" +
-                    result.error?.toString()?.toIndentString() +"\n" +
-                    result.throwable?.toString()?.toIndentString()
-        } else {
-            _statusLiveData.value = "Invalid state $code"
-            _resultLiveData.value = "¯\\_(ツ)_/¯"
+                _resultLiveData.value =
+                    if (result.isEmpty()) "Empty body"
+                    else result.asSuccess().value.toString().toIndentString()
+            }
+            result.isFailure() -> {
+                _statusLiveData.value = "Failure $statusName ($code)"
+                _resultLiveData.value = (result.message ?: "¯\\_(ツ)_/¯") + "\n" +
+                        result.error?.toString() +"\n" +
+                        result.throwable?.toString()
+            }
         }
     }
 

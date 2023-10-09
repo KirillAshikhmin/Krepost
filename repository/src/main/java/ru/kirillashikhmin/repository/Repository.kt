@@ -10,11 +10,11 @@ import retrofit2.Response
 import ru.kirillashikhmin.krepost.CacheStrategy
 import ru.kirillashikhmin.krepost.IKrepostError
 import ru.kirillashikhmin.krepost.Krepost
+import ru.kirillashikhmin.krepost.KrepostConfig
 import ru.kirillashikhmin.krepost.RequestResult
 import ru.kirillashikhmin.krepost.RequestStatus
 import ru.kirillashikhmin.krepost.ValidateResult
 import ru.kirillashikhmin.krepost.cache.InMemoryCache
-import ru.kirillashikhmin.krepost.cache.LocalFileCache
 import ru.kirillashikhmin.krepost.errorMappers.KotlinXSerializationErrorMapper
 import ru.kirillashikhmin.krepost.errorMappers.RetrofitErrorMapper
 import ru.kirillashikhmin.krepost.serializator.KotlinXSerializer
@@ -43,6 +43,7 @@ class Repository {
         )
         serializer = KotlinXSerializer
         cacher = InMemoryCache()//LocalFileCache(".", KotlinXSerializer)
+        config = KrepostConfig(retryCount = 1)
     }
 
     suspend fun fetchData1(): RequestResult<Int> = krepost.fetchDataMapped<String, Int> {
@@ -101,16 +102,16 @@ class Repository {
         return "1"
     }
 
-    suspend  fun <T> getData2(): String {
+    suspend fun <T> getData2(): String {
         delay(100)
-        if (Random.nextBoolean()) {
+        return if (Random.nextBoolean()) {
             throw when (Random.nextInt(2)) {
                 0 -> SerializationException("Test serialization exception")
                 1 -> HttpException(Response.error<T>(500, ResponseBody.create(MediaType.parse("application/json"), "{\"error\": \"Test\"}")))
                 else -> error("Other error")
             }
-        }
-        return if (Random.nextBoolean())  "42" else ""
+        } else
+            if (Random.nextBoolean())  "42" else ""
     }
 
 

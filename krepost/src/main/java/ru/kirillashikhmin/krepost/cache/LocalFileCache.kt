@@ -1,6 +1,8 @@
 package ru.kirillashikhmin.krepost.cache
 
 import android.util.Log
+import com.squareup.moshi.JsonAdapter
+import com.squareup.moshi.Moshi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -11,11 +13,13 @@ import kotlinx.serialization.json.Json
 import ru.kirillashikhmin.krepost.serializator.KrepostSerializer
 import java.io.File
 import java.io.OutputStreamWriter
+import java.lang.reflect.Type
 import java.math.BigInteger
 import java.net.URLEncoder
 import java.nio.charset.Charset
 import java.security.MessageDigest
 import java.util.*
+import kotlin.reflect.javaType
 
 
 @Suppress("unused")
@@ -37,9 +41,10 @@ class LocalFileCache(cachePath: String, val serializer: KrepostSerializer) : Kre
         cacheDir.mkdirs()
     }
 
-    private class Cache<T: Any>(val data : T)
+    private class Cache(val data : Any)
 
 
+    @OptIn(ExperimentalStdlibApi::class)
     override fun <T : Any> get(
         key: String,
         keyArguments: String,
@@ -64,9 +69,14 @@ class LocalFileCache(cachePath: String, val serializer: KrepostSerializer) : Kre
                     Log.e(TAG, "Unable read cache file for key: $key", e)
                 }
                 try {
-                    value = serializer.deserialize(valueString)
-//                    val zzz : Cache<T> = json.decodeFromString(valueString)
-//                    value = zzz.data
+
+
+                    val moshi: Moshi = Moshi.Builder().build()
+                    val clazz = Cache::class.java
+                    val jsonAdapter: JsonAdapter<Cache> = moshi.adapter(clazz)
+
+                    value = jsonAdapter.fromJson(valueString)?.data as T?
+//                    value = serializer.deserialize(valueString, T::class.java.componentType.genericSuperclass)
                 } catch (e: Throwable) {
                     Log.e(TAG, "Unable decode cache for key: $key", e)
                 }

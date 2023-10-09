@@ -18,7 +18,7 @@ Krepost - производное от Kotlin REPOSiTory. А так же от с�
 
 val krepost = Krepost.initialize()
 
-suspend fun fetchData1(): RequestResult<Int> =
+suspend fun fetchData(): RequestResult<Int> =
         krepost.fetchDataMapped<String, Int> {
             action { getRemoteDataSuspend() }
             cache {
@@ -71,6 +71,11 @@ when {
     info.isFailure() -> {
         Log.d(TAG, "Error loading data")
         val fail = info.asFailure()
+        setErrorState(fail.message)
+    }
+    info.isEmpty() -> {
+        Log.d(TAG, "Empty result received")
+        val fail = info.asEmpty()
         setErrorState(fail.message)
     }
 }

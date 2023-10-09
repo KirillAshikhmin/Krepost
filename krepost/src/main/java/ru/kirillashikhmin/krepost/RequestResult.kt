@@ -8,9 +8,12 @@ import kotlin.contracts.contract
 
 sealed class RequestResult<out T> {
 
-    open val status: RequestStatus = RequestStatus(0)
+    open val status: RequestStatus = RequestStatus.Unknown//(0)
 
     class Empty<T>(val message: String? = null) : Success<T>() {
+
+        override val status: RequestStatus
+            get() = RequestStatus.Ok
 
         override fun toString() = "Empty ($message)"
 
@@ -35,13 +38,6 @@ sealed class RequestResult<out T> {
 
         class ValueWithStatus<T>(override val value: T, override val status: RequestStatus) :
             Success<T>()
-
-        object Empty : Success<Nothing>() {
-            class Status(override val status: RequestStatus) : RequestResult<Nothing>()
-
-            override val value: Nothing get() = error("No value")
-            override fun toString() = "Success"
-        }
     }
 
     sealed class Cached<T>(override val value: T, open val cacheTime: Long) : Success<T>() {
@@ -126,6 +122,10 @@ fun <T> RequestResult<T>.asFailure(): RequestResult.Failure<*> {
 
 fun <T> RequestResult<T>.asSuccess(): RequestResult.Success<T> {
     return this as RequestResult.Success<T>
+}
+
+fun <T> RequestResult<T>.asEmpty(): RequestResult.Empty<T> {
+    return this as RequestResult.Empty<T>
 }
 
 fun <T> RequestResult<T>.asCached(): RequestResult.Cached<T> {

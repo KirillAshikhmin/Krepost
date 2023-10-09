@@ -1,71 +1,82 @@
 package  ru.kirillashikhmin.krepost
 
+data class RequestStatusTest(val code: Int) : RequestStatus(code)
+ class RequestStatusTest2 : RequestStatus(0)
 
 @Suppress("unused", "MagicNumber")
-open class RequestStatus(internalCode: Int = 0) {
+sealed class RequestStatus(val codeTest: Int) {
 
-    val code = internalCode
+    // That fix java.lang.ExceptionInInitializerError
+//    open val code : Int = -1
 
-    object Unknown : RequestStatus(0)
+    data object Unknown : RequestStatus(0) {
+//        override val code = 0
+    }
 
     //Http codes
-    object Ok : RequestStatus(200)
-    object NotModified : RequestStatus(304)
-    object BadRequest : RequestStatus(400)
-    object Unauthorized : RequestStatus(401)
-    object Forbidden : RequestStatus(403)
-    object NotFound : RequestStatus(404)
-    object NotAcceptable : RequestStatus(406)
-    object RequestEntityTooLarge : RequestStatus(413)
-    object IAmATeapot : RequestStatus(418)
-    object Unprocessable : RequestStatus(422)
-    object InternalServerError : RequestStatus(500)
-    object NotImplemented : RequestStatus(501)
-    object ServiceUnavailable : RequestStatus(503)
+    data object Ok : RequestStatus(200) {
+//        override val code = 200
+    }
+    data object NotModified : RequestStatus(304)
+    data object BadRequest : RequestStatus(400)
+    data object Unauthorized : RequestStatus(401)
+    data object Forbidden : RequestStatus(403)
+    data object NotFound : RequestStatus(404)
+    data object NotAcceptable : RequestStatus(406)
+    data object RequestEntityTooLarge : RequestStatus(413)
+    data object IAmATeapot : RequestStatus(418)
+    data object Unprocessable : RequestStatus(422)
+    data object InternalServerError : RequestStatus(500)
+    data object NotImplemented : RequestStatus(501)
+    data object ServiceUnavailable : RequestStatus(503)
 
 
     // Krepost codes
-    object KrepostInternalError : RequestStatus(1000)
-    object Canceled : RequestStatus(1001)
-    object InvalidRequest : RequestStatus(1002)
-    object SerializationError : RequestStatus(1003)
-    object CacheError : RequestStatus(1004)
-    object MappingError : RequestStatus(1005)
-    object UnknownRequestError : RequestStatus(1006)
-    object NoInternet : RequestStatus(1100)
+    data object KrepostInternalError : RequestStatus(1000)
+    data object Canceled : RequestStatus(1001)
+    data object InvalidRequest : RequestStatus(1002)
+    data object SerializationError : RequestStatus(1003)
+    data object CacheError : RequestStatus(1004)
+    data object MappingError : RequestStatus(1005)
+    data object UnknownRequestError : RequestStatus(1006)
+    data object NoInternet : RequestStatus(1100)
 
 
     companion object {
 
+        fun initialize() {
+           val init = RequestStatusTest2()
+        }
+
         fun addStatus(vararg status: RequestStatus) {
             status.forEach {
-                statuses[it.code] = it
+                statuses[it.codeTest] = it
             }
         }
 
         fun fromCode(code: Int): RequestStatus {
-            return statuses[code] ?: RequestStatus.Unknown
+            return statuses[code] ?: Unknown
         }
 
         private val statuses = mutableMapOf(
-            Unknown.code to Unknown,
-            Ok.code to Ok,
-            NotModified.code to NotModified,
-            BadRequest.code to BadRequest,
-            Unauthorized.code to Unauthorized,
-            Forbidden.code to Forbidden,
-            NotFound.code to NotFound,
-            NotAcceptable.code to NotAcceptable,
-            RequestEntityTooLarge.code to RequestEntityTooLarge,
-            Unprocessable.code to Unprocessable,
-            InternalServerError.code to InternalServerError,
-            NotImplemented.code to NotImplemented,
-            ServiceUnavailable.code to ServiceUnavailable,
-            Canceled.code to Canceled,
-            InvalidRequest.code to InvalidRequest,
-            SerializationError.code to SerializationError,
-            CacheError.code to CacheError,
-            NoInternet.code to NoInternet,
+            Unknown.codeTest to Unknown,
+            Ok.codeTest to Ok,
+            NotModified.codeTest to NotModified,
+            BadRequest.codeTest to BadRequest,
+            Unauthorized.codeTest to Unauthorized,
+            Forbidden.codeTest to Forbidden,
+            NotFound.codeTest to NotFound,
+            NotAcceptable.codeTest to NotAcceptable,
+            RequestEntityTooLarge.codeTest to RequestEntityTooLarge,
+            Unprocessable.codeTest to Unprocessable,
+            InternalServerError.codeTest to InternalServerError,
+            NotImplemented.codeTest to NotImplemented,
+            ServiceUnavailable.codeTest to ServiceUnavailable,
+            Canceled.codeTest to Canceled,
+            InvalidRequest.codeTest to InvalidRequest,
+            SerializationError.codeTest to SerializationError,
+            CacheError.codeTest to CacheError,
+            NoInternet.codeTest to NoInternet,
         )
     }
 }
