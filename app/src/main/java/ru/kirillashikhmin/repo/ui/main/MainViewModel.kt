@@ -125,7 +125,7 @@ class MainViewModel : ViewModel() {
             repeat(2 * indent) { append(' ') }
         }
 
-        this@toIndentString.filter { it != ' ' }.forEach { char ->
+        this@toIndentString.forEach { char ->
             when (char) {
                 ')', ']', '}' -> {
                     indent--
