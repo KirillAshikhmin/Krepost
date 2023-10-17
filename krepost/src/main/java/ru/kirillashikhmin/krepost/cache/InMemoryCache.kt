@@ -1,18 +1,32 @@
 package ru.kirillashikhmin.krepost.cache
 
+import kotlin.reflect.KType
+
+@Suppress("unused")
 class InMemoryCache : KrepostCache {
 
     private val cache = mutableMapOf<String, Any>()
 
-    override fun <T : Any> get(
+    @Suppress("UNCHECKED_CAST")
+    override fun <T> get(
+        type: KType,
         key: String,
         keyArguments: String,
         cacheTime: Long?,
         deleteIfOutdated: Boolean,
-    ): Pair<T?, Long> = Pair(cache.getOrDefault(key + keyArguments, null) as T?, 0L)
+    ): CacheResult<T> = CacheResult(cache.getOrDefault(key + keyArguments, null) as? T)
 
-    override fun <T : Any> write(key: String, keyArguments: String, data: T) {
-        cache[key + keyArguments] = data
+    override fun <T> write(
+        type: KType,
+        key: String,
+        keyArguments: String,
+        data: T
+    ) {
+        if (data is Any) {
+            cache[key + keyArguments] = data as Any
+        } else {
+            cache.remove(key + keyArguments)
+        }
     }
 
     override fun delete(key: String, keyArguments: String) {

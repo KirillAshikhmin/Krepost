@@ -44,14 +44,14 @@ sealed class RequestResult<out T> {
 
         override fun toString() = "Cached ($value)"
 
+        override val status: RequestStatus
+            get() = RequestStatus.Ok
+
         class Value<T>(override val value: T, override val cacheTime: Long) :
-            Cached<T>(value, cacheTime) {
-            override val status: RequestStatus
-                get() = RequestStatus.Ok
-        }
+            Cached<T>(value, cacheTime)
     }
 
-    sealed class Outdated<T>(override val value: T, cacheTime: Long) : Cached<T>(value, cacheTime)
+    class Outdated<T>(override val value: T,override val cacheTime: Long) : Cached<T>(value, cacheTime)
 
     sealed class Failure<E>(open val error: E? = null, open val message: String? = null) :
         RequestResult<Nothing>() {

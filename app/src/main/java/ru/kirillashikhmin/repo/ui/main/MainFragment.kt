@@ -6,9 +6,11 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import kotlinx.serialization.ExperimentalSerializationApi
 import ru.kirillashikhmin.repo.R
 import ru.kirillashikhmin.repo.databinding.FragmentMainBinding
 
+@OptIn(ExperimentalSerializationApi::class)
 class MainFragment : Fragment(R.layout.fragment_main) {
 
     companion object {
@@ -20,9 +22,11 @@ class MainFragment : Fragment(R.layout.fragment_main) {
     private val binding get() = _binding!!
 
 
+    @OptIn(ExperimentalSerializationApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        viewModel = ViewModelProvider(this).get(MainViewModel::class.java)
+        viewModel = ViewModelProvider(this)[MainViewModel::class.java]
+        viewModel.cacheDir = requireActivity().cacheDir.absolutePath
     }
 
     override fun onCreateView(
@@ -42,10 +46,14 @@ class MainFragment : Fragment(R.layout.fragment_main) {
         viewModel.statusLiveData.observe(viewLifecycleOwner) {
             binding.statusTextView.text = it
         }
-        binding.loadingButton.setOnClickListener { viewModel.fetchData() }
-        binding.loadingErrorButton.setOnClickListener { viewModel.fetchWithError() }
-        binding.invokeActionButton.setOnClickListener { viewModel.invokeAction() }
-        binding.noFlowButton.setOnClickListener { viewModel.fetchWithoutFlow() }
+        binding.fetchButton.setOnClickListener { viewModel.fetchData() }
+        binding.fetchProductsButton.setOnClickListener { viewModel.fetchProducts() }
+        binding.fetchSpecificProductButton.setOnClickListener {
+            viewModel.fetchProduct(binding.idEditText.text?.toString())
+        }
+        binding.invalidateCheckbox.setOnCheckedChangeListener { _, checked ->
+            viewModel.invalidateCache = checked
+        }
     }
 
     override fun onDestroyView() {

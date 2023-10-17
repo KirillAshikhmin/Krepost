@@ -8,123 +8,107 @@ import okhttp3.ResponseBody
 import retrofit2.HttpException
 import retrofit2.Response
 import ru.kirillashikhmin.krepost.CacheStrategy
-import ru.kirillashikhmin.krepost.IKrepostError
 import ru.kirillashikhmin.krepost.Krepost
 import ru.kirillashikhmin.krepost.KrepostConfig
 import ru.kirillashikhmin.krepost.RequestResult
-import ru.kirillashikhmin.krepost.RequestStatus
 import ru.kirillashikhmin.krepost.ValidateResult
-import ru.kirillashikhmin.krepost.cache.InMemoryCache
+import ru.kirillashikhmin.krepost.cache.LocalFileCache
 import ru.kirillashikhmin.krepost.errorMappers.KotlinXSerializationErrorMapper
 import ru.kirillashikhmin.krepost.errorMappers.RetrofitErrorMapper
 import ru.kirillashikhmin.krepost.serializator.KotlinXSerializer
+import ru.kirillashikhmin.repository.dto.ErrorDto
+import ru.kirillashikhmin.repository.dto.FetchDataDto
+import ru.kirillashikhmin.repository.dto.ProductDto
 import ru.kirillashikhmin.repository.dto.ProductsDto
+import ru.kirillashikhmin.repository.models.DummyError
+import ru.kirillashikhmin.repository.models.Product
 import kotlin.random.Random
 
 
 @ExperimentalSerializationApi
-class Repository {
+@Suppress("MagicNumber")
+class Repository(cacheDir: String) {
 
     private var service: DummyJsonService =
         RepositoryCore.createService("https://dummyjson.com/", DummyJsonService::class.java)
 
-    suspend fun getProducts(): RequestResult<ProductsDto> {
-        return try {
-            val result = service.getProducts()
-            RequestResult.Success.Value(result)
-        } catch (t: Throwable) {
-            RequestResult.Failure.Error(RequestStatus.Unprocessable, "Error", t)
-        }
-    }
+    private val localFileCache = LocalFileCache(cacheDir, KotlinXSerializer)
 
-    val krepost = Krepost {
+    private val krepost = Krepost {
         errorMappers = listOf(
             KotlinXSerializationErrorMapper, RetrofitErrorMapper
         )
         serializer = KotlinXSerializer
-        cacher = InMemoryCache()//LocalFileCache(".", KotlinXSerializer)
+        cacher = localFileCache
         config = KrepostConfig(retryCount = 1)
     }
 
-    suspend fun fetchData1(): RequestResult<Int> = krepost.fetchDataMapped<String, Int> {
-        action { getData() }
-        cache("fetchString") {
-            strategy = CacheStrategy.IfExist
-            arguments("string", 1)
-        }
-        mapper { data -> data.toInt() }
+    init {
+        localFileCache.clear()
     }
 
-    suspend fun fetchData2(): RequestResult<Int> {
-        val result2 = krepost.fetchDataMapped<String, Int> {
-            action { getData() }
-            cache("bbb") {
-                strategy = CacheStrategy.IfNotAvailable
-                arguments(2)
+    suspend fun fetchProducts(invalidateCache: Boolean): RequestResult<List<Product>> =
+        krepost.fetchDataMapped<ProductsDto, List<Product>> {
+            action { service.getProducts() }
+            cache("products") {
+                strategy = CacheStrategy.IfExist
+                invalidate = invalidateCache
             }
-            mapper { data -> data.toInt() }
-        }
-        return result2
-    }
-
-    suspend fun fetchData3(): RequestResult<String> {
-        val result3 = krepost.fetchData<String> {
-            action { getData3() }
-            cache("ccc") {
-                strategy = CacheStrategy.IfNotAvailable
-                arguments(3)
-            }
+            validator(Validators::validateProducts)
+            mapper(Mappers::mapProducts)
         }
 
-        return result3
-    }
-
-    suspend fun fetchData4(): RequestResult<Int> {
-        val result2 = krepost.fetchDataMappedAndErrorMapped<String, Int, ErrorDto, MyKrepostError> {
-            action { getData2<String>() }
-            cache("bbb") {
-                strategy = CacheStrategy.IfNotAvailable
-                arguments(2)
+    suspend fun fetchProduct(id: Int, invalidateCache: Boolean): RequestResult<Product> =
+        krepost.fetchDataMappedAndErrorMapped<ProductDto, Product, ErrorDto, DummyError> {
+            action { service.getProduct(id) }
+            cache("product") {
+                strategy = CacheStrategy.IfExist
+                invalidate = invalidateCache
+                arguments(id)
             }
-            mapper { data -> data.toInt() }
+            mapper(Mappers::mapProduct)
+            errorMapper(Mappers::mapError)
+        }
+
+    suspend fun fetchData(invalidateCache: Boolean): RequestResult<FetchDataDto> {
+        val result2 = krepost.fetchWithErrorMapped<FetchDataDto, ErrorDto, DummyError> {
+            action { getData<FetchDataDto>() }
+            cache("data") {
+                strategy = CacheStrategy.IfNotAvailable
+                deleteIfOutdated = false
+                cacheTimeMilliseconds = 10_000 // 10 sec cache valid
+                invalidate = invalidateCache
+            }
             validator { data ->
-                if (data == null) ValidateResult.Error()
-                else if (data.isBlank()) ValidateResult.Empty()
+                if (data?.message == null) ValidateResult.Error()
+                else if (data.message.isBlank()) ValidateResult.Empty()
                 else ValidateResult.Ok
             }
-            errorMapper { error -> MyKrepostError(error.error) }
+            errorMapper { error -> DummyError(error.message) }
         }
         return result2
     }
 
-    suspend fun getData(): String {
-        delay(100)
-        return "1"
-    }
 
-    suspend fun <T> getData2(): String {
-        delay(100)
+    private suspend fun <T> getData(): FetchDataDto {
+        delay(Random.nextLong(2000))
         return if (Random.nextBoolean()) {
             throw when (Random.nextInt(2)) {
                 0 -> SerializationException("Test serialization exception")
-                1 -> HttpException(Response.error<T>(500, ResponseBody.create(MediaType.parse("application/json"), "{\"error\": \"Test\"}")))
+                1 -> HttpException(
+                    Response.error<T>(
+                        500,
+                        ResponseBody.create(
+                            MediaType.parse("application/json"),
+                            "{\"message\": \"Test 500 exception\"}"
+                        )
+                    )
+                )
+
                 else -> error("Other error")
             }
         } else
-            if (Random.nextBoolean())  "42" else ""
+            FetchDataDto(if (Random.nextBoolean()) "Successful response" else "")
     }
-
-
-    suspend fun getData3(): String {
-        delay(100)
-        return "3"
-    }
-
-    data class ErrorDto(val error: String)
-
-    class MyKrepostError(val message : String? = null) : IKrepostError {
-        override val errorMessage: String
-            get() = message ?: "I'm stub error"
-    }
-
 }
+

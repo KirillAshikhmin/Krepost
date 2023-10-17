@@ -1,22 +1,12 @@
 package  ru.kirillashikhmin.krepost
 
-data class RequestStatusTest(val code: Int) : RequestStatus(code)
- class RequestStatusTest2 : RequestStatus(0)
-
 @Suppress("unused", "MagicNumber")
-sealed class RequestStatus(val codeTest: Int) {
-
-    // That fix java.lang.ExceptionInInitializerError
-//    open val code : Int = -1
-
-    data object Unknown : RequestStatus(0) {
-//        override val code = 0
-    }
+sealed class RequestStatus(val code: Int) {
+    class Initial(code : Int) : RequestStatus(code)
+    data object Unknown : RequestStatus(0)
 
     //Http codes
-    data object Ok : RequestStatus(200) {
-//        override val code = 200
-    }
+    data object Ok : RequestStatus(200)
     data object NotModified : RequestStatus(304)
     data object BadRequest : RequestStatus(400)
     data object Unauthorized : RequestStatus(401)
@@ -44,13 +34,14 @@ sealed class RequestStatus(val codeTest: Int) {
 
     companion object {
 
+        @Suppress("UNUSED_VARIABLE")
         fun initialize() {
-           val init = RequestStatusTest2()
+           val init = Initial(0)
         }
 
         fun addStatus(vararg status: RequestStatus) {
             status.forEach {
-                statuses[it.codeTest] = it
+                statuses[it.code] = it
             }
         }
 
@@ -59,24 +50,24 @@ sealed class RequestStatus(val codeTest: Int) {
         }
 
         private val statuses = mutableMapOf(
-            Unknown.codeTest to Unknown,
-            Ok.codeTest to Ok,
-            NotModified.codeTest to NotModified,
-            BadRequest.codeTest to BadRequest,
-            Unauthorized.codeTest to Unauthorized,
-            Forbidden.codeTest to Forbidden,
-            NotFound.codeTest to NotFound,
-            NotAcceptable.codeTest to NotAcceptable,
-            RequestEntityTooLarge.codeTest to RequestEntityTooLarge,
-            Unprocessable.codeTest to Unprocessable,
-            InternalServerError.codeTest to InternalServerError,
-            NotImplemented.codeTest to NotImplemented,
-            ServiceUnavailable.codeTest to ServiceUnavailable,
-            Canceled.codeTest to Canceled,
-            InvalidRequest.codeTest to InvalidRequest,
-            SerializationError.codeTest to SerializationError,
-            CacheError.codeTest to CacheError,
-            NoInternet.codeTest to NoInternet,
+            Unknown.code to Unknown,
+            Ok.code to Ok,
+            NotModified.code to NotModified,
+            BadRequest.code to BadRequest,
+            Unauthorized.code to Unauthorized,
+            Forbidden.code to Forbidden,
+            NotFound.code to NotFound,
+            NotAcceptable.code to NotAcceptable,
+            RequestEntityTooLarge.code to RequestEntityTooLarge,
+            Unprocessable.code to Unprocessable,
+            InternalServerError.code to InternalServerError,
+            NotImplemented.code to NotImplemented,
+            ServiceUnavailable.code to ServiceUnavailable,
+            Canceled.code to Canceled,
+            InvalidRequest.code to InvalidRequest,
+            SerializationError.code to SerializationError,
+            CacheError.code to CacheError,
+            NoInternet.code to NoInternet,
         )
     }
 }

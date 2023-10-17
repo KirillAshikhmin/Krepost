@@ -10,23 +10,34 @@ data class KrepostConfig(
      * Задержка между повторами запросов.
      */
     var retryDelayMilliseconds: Long = defaultRetryDelayMilliseconds,
+    /**
+     * Сколько времени валиден кэш.
+     */
     var cacheTimeMilliseconds: Long = defaultCacheTime,
+    /**
+     * Удалять ли устаревший кэш при запросе (true)
+     * или возвращать Outdated результат (false).
+     */
     var deleteCacheIfOutdated: Boolean = defaultDeleteCacheIfOutdated,
+    /**
+     * Список статусов при которых не происходит повторного запроса
+     * при ошибке и retryCount > 1.
+     */
     var noRetryStatuses: List<RequestStatus> = defaultNoRetryStatuses,
 ) {
     companion object {
-        const val defaultCacheTime = 7 * 24 * 60 * 60 * 1000L // 7 days
+        const val defaultCacheTime = 24 * 60 * 60 * 1000L // 24 hours
         const val defaultDeleteCacheIfOutdated = true
         const val defaultRetryCount = 3
         const val defaultRetryDelayMilliseconds = 300L
         val defaultNoRetryStatuses = listOf<RequestStatus>(
-//            RequestStatus.NotFound,
-//            RequestStatus.Unprocessable,
-//            RequestStatus.Forbidden,
-//            RequestStatus.Unauthorized,
-//            RequestStatus.BadRequest,
-//            RequestStatus.SerializationError,
-//            RequestStatus.NotImplemented,
+            RequestStatus.NotFound,
+            RequestStatus.Unprocessable,
+            RequestStatus.Forbidden,
+            RequestStatus.Unauthorized,
+            RequestStatus.BadRequest,
+            RequestStatus.SerializationError,
+            RequestStatus.NotImplemented,
         )
     }
 }

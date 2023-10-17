@@ -1,10 +1,10 @@
 package ru.kirillashikhmin.krepost.serializator
 
-import java.lang.reflect.Type
+import kotlin.reflect.KType
 
 interface KrepostSerializer {
 
-    fun serialize(data: Any) : String
+    fun <T> serialize(data: T, type: KType) : String
 
-    fun <T: Any> deserialize(str: String, type: Type): T
+    fun <T> deserialize(str: String, type: KType): T
 }

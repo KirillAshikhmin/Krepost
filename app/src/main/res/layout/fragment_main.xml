@@ -1,41 +1,58 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:layout_height="match_parent"
-    android:layout_width="match_parent">
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
 
     <LinearLayout
         android:id="@+id/main"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="wrap_content"
         android:orientation="vertical"
         android:padding="16dp"
         tools:context=".ui.main.MainFragment">
 
         <Button
-            android:id="@+id/loading_button"
+            android:id="@+id/fetch_button"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Fetch data" />
 
-        <Button
-            android:id="@+id/loading_error_button"
+        <View
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Fetch with error" />
+            android:layout_height="2dp"
+            android:background="@color/black" />
+
 
         <Button
-            android:id="@+id/invoke_action_button"
+            android:id="@+id/fetch_products_button"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Invoke action (without cache)" />
+            android:text="Fetch dummy products" />
 
-        <Button
-            android:id="@+id/no_flow_button"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Fetch without flow" />
+            android:orientation="horizontal">
+
+            <EditText
+                android:id="@+id/id_edit_text"
+                android:layout_width="100dp"
+                android:layout_height="wrap_content"
+                android:hint="Id" />
+
+            <Button
+                android:id="@+id/fetch_specific_product_button"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Fetch specific product" />
+        </LinearLayout>
+
+        <CheckBox
+            android:id="@+id/invalidate_checkbox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Invalidate cache" />
 
         <TextView
             android:id="@+id/result_title_text_view"
@@ -50,13 +67,13 @@
             android:id="@+id/status_text_view"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="TextView"
-            android:textSize="16sp" />
+            android:text="Click to button for start"
+            android:textSize="24sp" />
 
         <TextView
             android:id="@+id/result_text_view"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="TextView" />
+            android:textSize="20sp" />
     </LinearLayout>
 </ScrollView>

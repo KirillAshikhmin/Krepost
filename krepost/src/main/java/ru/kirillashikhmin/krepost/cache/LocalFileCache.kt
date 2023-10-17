@@ -1,29 +1,22 @@
 package ru.kirillashikhmin.krepost.cache
 
 import android.util.Log
-import com.squareup.moshi.JsonAdapter
-import com.squareup.moshi.Moshi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import ru.kirillashikhmin.krepost.serializator.KrepostSerializer
 import java.io.File
 import java.io.OutputStreamWriter
-import java.lang.reflect.Type
-import java.math.BigInteger
 import java.net.URLEncoder
 import java.nio.charset.Charset
-import java.security.MessageDigest
 import java.util.*
-import kotlin.reflect.javaType
+import kotlin.reflect.KType
 
 
-@Suppress("unused")
-class LocalFileCache(cachePath: String, val serializer: KrepostSerializer) : KrepostCache {
+@Suppress("unused", "TooGenericExceptionCaught")
+class LocalFileCache(cachePath: String, private val serializer: KrepostSerializer) : KrepostCache {
 
     companion object {
         const val TAG = "LocalFileCache"
@@ -41,27 +34,27 @@ class LocalFileCache(cachePath: String, val serializer: KrepostSerializer) : Kre
         cacheDir.mkdirs()
     }
 
-    private class Cache(val data : Any)
+    private class Cache(val data: Any)
 
 
-    @OptIn(ExperimentalStdlibApi::class)
-    override fun <T : Any> get(
+    @Suppress("ReturnCount")
+    override fun <T> get(
+        type: KType,
         key: String,
         keyArguments: String,
         cacheTime: Long?,
         deleteIfOutdated: Boolean,
-    ): Pair<T?, Long> {
+    ): CacheResult<T> {
         try {
-            val cacheKeyArguments = keyArguments.md5()
-            val cacheKey = "$key:$cacheKeyArguments"
-            val fileName = getFileNameByKey(cacheKey) ?: return Pair(null, 0)
+            val cacheKey = "$key:$keyArguments"
+            val fileName = getFileNameByKey(cacheKey) ?: return CacheResult(null)
             val date = getDateFromFile(cacheKey, fileName)
             val valid =
                 checkItemValid(fileName, date + (cacheTime ?: Long.MAX_VALUE), deleteIfOutdated)
             Log.d(TAG, "Get cache: $fileName isValid:$valid")
             var value: T? = null
             var valueString = ""
-            if (valid) {
+            if (valid || !deleteIfOutdated) {
                 try {
                     val file = File(cacheDir, fileName)
                     valueString = file.readText(Charset.forName("UTF-8"))
@@ -69,33 +62,26 @@ class LocalFileCache(cachePath: String, val serializer: KrepostSerializer) : Kre
                     Log.e(TAG, "Unable read cache file for key: $key", e)
                 }
                 try {
-
-
-                    val moshi: Moshi = Moshi.Builder().build()
-                    val clazz = Cache::class.java
-                    val jsonAdapter: JsonAdapter<Cache> = moshi.adapter(clazz)
-
-                    value = jsonAdapter.fromJson(valueString)?.data as T?
-//                    value = serializer.deserialize(valueString, T::class.java.componentType.genericSuperclass)
+                    value = serializer.deserialize(valueString, type)
                 } catch (e: Throwable) {
                     Log.e(TAG, "Unable decode cache for key: $key", e)
                 }
             }
-            return Pair(value, date)
+            return CacheResult(value, date, !valid)
         } catch (e: Throwable) {
             Log.e(TAG, "Unable get cache for key: $key", e)
-            return Pair(null, 0)
+            return CacheResult(null)
         }
     }
 
-    override fun <T : Any> write(
+    override fun <T> write(
+        type: KType,
         key: String,
         keyArguments: String,
         data: T,
     ) {
         try {
-            val cacheKeyArguments = keyArguments.md5()
-            val cacheKey = "$key:$cacheKeyArguments"
+            val cacheKey = "$key:$keyArguments"
             val currentFile = getFileNameByKey(cacheKey)
             if (currentFile != null) deleteFile(currentFile)
             val fileName = "${cacheKey}#${Date().time}${ext}"
@@ -104,8 +90,7 @@ class LocalFileCache(cachePath: String, val serializer: KrepostSerializer) : Kre
             cacheDir.mkdirs()
             val file = File(cacheDir, fileName)
 
-            val json = serializer.serialize(data)
-//            val json = json.encodeToString(Cache(data))
+            val json = serializer.serialize(data, type)
 
             val outputStream = file.outputStream()
             val osw = OutputStreamWriter(outputStream)
@@ -118,8 +103,7 @@ class LocalFileCache(cachePath: String, val serializer: KrepostSerializer) : Kre
     }
 
     override fun delete(key: String, keyArguments: String) {
-        val cacheKeyArguments = keyArguments.md5()
-        val cacheKey = "$key:$cacheKeyArguments"
+        val cacheKey = "$key:$keyArguments"
         val currentFile = getFileNameByKey(cacheKey)
         if (currentFile != null) deleteFile(currentFile)
     }
@@ -138,6 +122,7 @@ class LocalFileCache(cachePath: String, val serializer: KrepostSerializer) : Kre
         return getDateFromFile(cacheKey, fileName)
     }
 
+    @Suppress("SwallowedException")
     private fun getDateFromFile(key: String, fileName: String): Long {
         try {
             val time = fileName.replace(ext, "").replace(key, "").replace("#", "")
@@ -173,11 +158,6 @@ class LocalFileCache(cachePath: String, val serializer: KrepostSerializer) : Kre
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             cacheDir.deleteRecursively()
         }
-    }
-
-    private fun String.md5(): String {
-        val md = MessageDigest.getInstance("MD5")
-        return BigInteger(1, md.digest(this.toByteArray())).toString(16).padStart(32, '0')
     }
 
 }
