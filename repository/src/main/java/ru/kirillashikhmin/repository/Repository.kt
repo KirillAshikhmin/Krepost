@@ -3,27 +3,29 @@ package ru.kirillashikhmin.repository
 import kotlinx.coroutines.delay
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerializationException
-import okhttp3.MediaType
-import okhttp3.ResponseBody
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.ResponseBody.Companion.toResponseBody
 import retrofit2.HttpException
 import retrofit2.Response
 import ru.kirillashikhmin.krepost.CacheStrategy
 import ru.kirillashikhmin.krepost.Krepost
 import ru.kirillashikhmin.krepost.KrepostConfig
 import ru.kirillashikhmin.krepost.RequestResult
+import ru.kirillashikhmin.krepost.RequestStatus
 import ru.kirillashikhmin.krepost.ValidateResult
 import ru.kirillashikhmin.krepost.cache.LocalFileCache
 import ru.kirillashikhmin.krepost.errorMappers.KotlinXSerializationErrorMapper
 import ru.kirillashikhmin.krepost.errorMappers.RetrofitErrorMapper
-import ru.kirillashikhmin.krepost.serializator.KotlinXSerializer
+import ru.kirillashikhmin.krepost.serializers.KotlinXSerializer
+import ru.kirillashikhmin.repository.dto.Error500Dto
 import ru.kirillashikhmin.repository.dto.ErrorDto
 import ru.kirillashikhmin.repository.dto.FetchDataDto
 import ru.kirillashikhmin.repository.dto.ProductDto
 import ru.kirillashikhmin.repository.dto.ProductsDto
 import ru.kirillashikhmin.repository.models.DummyError
+import ru.kirillashikhmin.repository.models.Error500
 import ru.kirillashikhmin.repository.models.Product
 import kotlin.random.Random
-
 
 @ExperimentalSerializationApi
 @Suppress("MagicNumber")
@@ -32,13 +34,14 @@ class Repository(cacheDir: String) {
     private var service: DummyJsonService =
         RepositoryCore.createService("https://dummyjson.com/", DummyJsonService::class.java)
 
-    private val localFileCache = LocalFileCache(cacheDir, KotlinXSerializer)
+    val kotlinXSerializer = KotlinXSerializer(RepositoryCore.json)
+    private val localFileCache = LocalFileCache(cacheDir, kotlinXSerializer)
 
     private val krepost = Krepost {
         errorMappers = listOf(
-            KotlinXSerializationErrorMapper, RetrofitErrorMapper
+            KotlinXSerializationErrorMapper, RetrofitErrorMapper()
         )
-        serializer = KotlinXSerializer
+        serializer = kotlinXSerializer
         cacher = localFileCache
         config = KrepostConfig(retryCount = 1)
     }
@@ -48,7 +51,7 @@ class Repository(cacheDir: String) {
     }
 
     suspend fun fetchProducts(invalidateCache: Boolean): RequestResult<List<Product>> =
-        krepost.fetchDataMapped<ProductsDto, List<Product>> {
+        krepost.fetchMapped<ProductsDto, List<Product>> {
             action { service.getProducts() }
             cache("products") {
                 strategy = CacheStrategy.IfExist
@@ -58,8 +61,14 @@ class Repository(cacheDir: String) {
             mapper(Mappers::mapProducts)
         }
 
+    suspend fun sendWithoutResponse(): RequestResult<Unit> =
+        krepost.fetch {
+            action { service.send() }
+            errorMapper(Mappers::mapError)
+        }
+
     suspend fun fetchProduct(id: Int, invalidateCache: Boolean): RequestResult<Product> =
-        krepost.fetchDataMappedAndErrorMapped<ProductDto, Product, ErrorDto, DummyError> {
+        krepost.fetchMapped<ProductDto, Product> {
             action { service.getProduct(id) }
             cache("product") {
                 strategy = CacheStrategy.IfExist
@@ -71,7 +80,7 @@ class Repository(cacheDir: String) {
         }
 
     suspend fun fetchData(invalidateCache: Boolean): RequestResult<FetchDataDto> {
-        val result2 = krepost.fetchWithErrorMapped<FetchDataDto, ErrorDto, DummyError> {
+        val result2 = krepost.fetch<FetchDataDto> {
             action { getData<FetchDataDto>() }
             cache("data") {
                 strategy = CacheStrategy.IfNotAvailable
@@ -84,24 +93,36 @@ class Repository(cacheDir: String) {
                 else if (data.message.isBlank()) ValidateResult.Empty()
                 else ValidateResult.Ok
             }
-            errorMapper { error -> DummyError(error.message) }
+            errorMappers {
+                any<ErrorDto, DummyError> { error -> DummyError(error.message) }
+                status<Error500Dto, Error500>(
+                    RequestStatus.InternalServerError,
+                    Mappers::map500Error
+                )
+            }
         }
         return result2
     }
 
 
     private suspend fun <T> getData(): FetchDataDto {
-        delay(Random.nextLong(2000))
+        delay(Random.nextLong(1000))
         return if (Random.nextBoolean()) {
-            throw when (Random.nextInt(2)) {
+            throw when (Random.nextInt(3)) {
                 0 -> SerializationException("Test serialization exception")
                 1 -> HttpException(
                     Response.error<T>(
                         500,
-                        ResponseBody.create(
-                            MediaType.parse("application/json"),
-                            "{\"message\": \"Test 500 exception\"}"
-                        )
+                        "{\"message\": \"Test 500 exception\", \"supportPhone\": \"88005553535\"}"
+                            .toResponseBody("application/json".toMediaType())
+                    )
+                )
+
+                2 -> HttpException(
+                    Response.error<T>(
+                        404,
+                        "{\"message\": \"Item not found\"}"
+                            .toResponseBody("application/json".toMediaType())
                     )
                 )
 

@@ -41,6 +41,17 @@ class MainViewModel : ViewModel() {
         }
     }
 
+    fun send() {
+        viewModelScope.launch {
+            setLoadingState()
+            val fetchResult: RequestResult<Unit>
+            val elapsed = measureTimeMillis {
+                fetchResult = repository.value.sendWithoutResponse()
+            }
+            setFetchingStatus(fetchResult, elapsed)
+        }
+    }
+
     fun fetchProducts() {
         viewModelScope.launch {
             setLoadingState()

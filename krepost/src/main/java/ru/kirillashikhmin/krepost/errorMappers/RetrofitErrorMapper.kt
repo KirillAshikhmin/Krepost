@@ -3,29 +3,22 @@ package ru.kirillashikhmin.krepost.errorMappers
 import retrofit2.HttpException
 import ru.kirillashikhmin.krepost.RequestStatus
 
-object RetrofitErrorMapper : ErrorMapper {
+open class RetrofitErrorMapper : ErrorMapper {
+
+    @Suppress("ReturnCount")
     override fun getErrorDataFromThrowable(
         throwable: Throwable,
         isGetResponseFromException: Boolean
     ): ErrorData? {
         if (throwable !is HttpException) return null
-        val status = when (throwable.code()) {
-            200 -> RequestStatus.Ok
-            304 -> RequestStatus.NotModified
-            400 -> RequestStatus.BadRequest
-            401 -> RequestStatus.Unauthorized
-            403 -> RequestStatus.Forbidden
-            404 -> RequestStatus.NotFound
-            406 -> RequestStatus.NotAcceptable
-            413 -> RequestStatus.RequestEntityTooLarge
-            418 -> RequestStatus.IAmATeapot
-            422 -> RequestStatus.Unprocessable
-            500 -> RequestStatus.InternalServerError
-            501 -> RequestStatus.NotImplemented
-            503 -> RequestStatus.ServiceUnavailable
-            else -> return null
-        }
-        val response = if (isGetResponseFromException) throwable.response()?.errorBody()?.string() else null
+        val status = getStatusFromCode(throwable.code()) ?: return null
+        val response =
+            if (isGetResponseFromException) throwable.response()?.errorBody()?.string() else null
         return ErrorData(status, response)
     }
+
+    open fun getStatusFromCode(code: Int): RequestStatus? {
+        return RequestStatus.fromCode(code)
+    }
 }
+

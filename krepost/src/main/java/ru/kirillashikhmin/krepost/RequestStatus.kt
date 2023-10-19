@@ -3,6 +3,8 @@ package  ru.kirillashikhmin.krepost
 @Suppress("unused", "MagicNumber")
 sealed class RequestStatus(val code: Int) {
     class Initial(code : Int) : RequestStatus(code)
+
+    data object Any : RequestStatus(-1)
     data object Unknown : RequestStatus(0)
 
     //Http codes
@@ -45,12 +47,11 @@ sealed class RequestStatus(val code: Int) {
             }
         }
 
-        fun fromCode(code: Int): RequestStatus {
-            return statuses[code] ?: Unknown
+        fun fromCode(code: Int): RequestStatus? {
+            return statuses[code]
         }
 
         private val statuses = mutableMapOf(
-            Unknown.code to Unknown,
             Ok.code to Ok,
             NotModified.code to NotModified,
             BadRequest.code to BadRequest,

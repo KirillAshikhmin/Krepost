@@ -13,4 +13,7 @@ interface DummyJsonService {
 
     @GET("product/{id}")
     suspend fun getProduct(@Path("id") id: Int): ProductDto
+
+    @GET("/")
+    suspend fun send()
 }

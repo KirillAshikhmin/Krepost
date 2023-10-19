@@ -6,7 +6,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
-import ru.kirillashikhmin.krepost.serializator.KrepostSerializer
+import ru.kirillashikhmin.krepost.KrepostCacheException
+import ru.kirillashikhmin.krepost.serializers.KrepostSerializer
 import java.io.File
 import java.io.OutputStreamWriter
 import java.net.URLEncoder
@@ -34,9 +35,6 @@ class LocalFileCache(cachePath: String, private val serializer: KrepostSerialize
         cacheDir.mkdirs()
     }
 
-    private class Cache(val data: Any)
-
-
     @Suppress("ReturnCount")
     override fun <T> get(
         type: KType,
@@ -49,28 +47,21 @@ class LocalFileCache(cachePath: String, private val serializer: KrepostSerialize
             val cacheKey = "$key:$keyArguments"
             val fileName = getFileNameByKey(cacheKey) ?: return CacheResult(null)
             val date = getDateFromFile(cacheKey, fileName)
-            val valid =
-                checkItemValid(fileName, date + (cacheTime ?: Long.MAX_VALUE), deleteIfOutdated)
-            Log.d(TAG, "Get cache: $fileName isValid:$valid")
+            val valid = checkItemValid(
+                fileName = fileName,
+                validUntil = date + (cacheTime ?: Long.MAX_VALUE),
+                deleteIfOutdated = deleteIfOutdated
+            )
             var value: T? = null
-            var valueString = ""
             if (valid || !deleteIfOutdated) {
-                try {
-                    val file = File(cacheDir, fileName)
-                    valueString = file.readText(Charset.forName("UTF-8"))
-                } catch (e: Throwable) {
-                    Log.e(TAG, "Unable read cache file for key: $key", e)
-                }
-                try {
-                    value = serializer.deserialize(valueString, type)
-                } catch (e: Throwable) {
-                    Log.e(TAG, "Unable decode cache for key: $key", e)
-                }
+                val file = File(cacheDir, fileName)
+                val valueString = file.readText(Charset.forName("UTF-8"))
+                value = serializer.deserialize(valueString, type)
             }
             return CacheResult(value, date, !valid)
         } catch (e: Throwable) {
             Log.e(TAG, "Unable get cache for key: $key", e)
-            return CacheResult(null)
+            throw KrepostCacheException(e, write = false)
         }
     }
 
@@ -85,8 +76,6 @@ class LocalFileCache(cachePath: String, private val serializer: KrepostSerialize
             val currentFile = getFileNameByKey(cacheKey)
             if (currentFile != null) deleteFile(currentFile)
             val fileName = "${cacheKey}#${Date().time}${ext}"
-
-            Log.d(TAG, "Write cache: $fileName")
             cacheDir.mkdirs()
             val file = File(cacheDir, fileName)
 
@@ -99,13 +88,19 @@ class LocalFileCache(cachePath: String, private val serializer: KrepostSerialize
 
         } catch (e: Throwable) {
             Log.e(TAG, "Unable write cache for key: $key", e)
+            throw KrepostCacheException(e, write = true)
         }
     }
 
     override fun delete(key: String, keyArguments: String) {
-        val cacheKey = "$key:$keyArguments"
-        val currentFile = getFileNameByKey(cacheKey)
-        if (currentFile != null) deleteFile(currentFile)
+        try {
+            val cacheKey = "$key:$keyArguments"
+            val currentFile = getFileNameByKey(cacheKey)
+            if (currentFile != null) deleteFile(currentFile)
+        } catch (e: Throwable) {
+            Log.e(TAG, "Unable write cache for key: $key", e)
+            throw KrepostCacheException(e, write = false)
+        }
     }
 
 

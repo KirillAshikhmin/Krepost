@@ -1,4 +1,4 @@
-package ru.kirillashikhmin.krepost.serializator
+package ru.kirillashikhmin.krepost.serializers
 
 import kotlin.reflect.KType
 

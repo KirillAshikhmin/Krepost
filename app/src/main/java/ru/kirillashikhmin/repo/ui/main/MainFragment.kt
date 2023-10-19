@@ -1,11 +1,11 @@
 package ru.kirillashikhmin.repo.ui.main
 
-import androidx.lifecycle.ViewModelProvider
 import android.os.Bundle
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.fragment.app.Fragment
+import androidx.lifecycle.ViewModelProvider
 import kotlinx.serialization.ExperimentalSerializationApi
 import ru.kirillashikhmin.repo.R
 import ru.kirillashikhmin.repo.databinding.FragmentMainBinding
@@ -47,6 +47,7 @@ class MainFragment : Fragment(R.layout.fragment_main) {
             binding.statusTextView.text = it
         }
         binding.fetchButton.setOnClickListener { viewModel.fetchData() }
+        binding.sendButton.setOnClickListener { viewModel.send() }
         binding.fetchProductsButton.setOnClickListener { viewModel.fetchProducts() }
         binding.fetchSpecificProductButton.setOnClickListener {
             viewModel.fetchProduct(binding.idEditText.text?.toString())

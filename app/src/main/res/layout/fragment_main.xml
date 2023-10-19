@@ -16,12 +16,18 @@
             android:id="@+id/fetch_button"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Fetch data" />
+            android:text="Fetch data (Mock, random result)" />
 
         <View
             android:layout_width="match_parent"
             android:layout_height="2dp"
             android:background="@color/black" />
+
+        <Button
+            android:id="@+id/send_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Send without response" />
 
 
         <Button
